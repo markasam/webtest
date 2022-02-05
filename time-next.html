@@ -3,31 +3,30 @@
 
 <head>
   <title>Flash Math</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
   <script>
     'use strict';
 
-    // status  [13/39 | m Incorrect]
+    // stats  [13/39 | m Incorrect]
     var incorrectCount;
     var correctCount;
     var problemCountGoal;
     var startTime;
+    var endTime;
+    //var problemCountGoalNext = null;
 
     // elements
-    var answerInput; 
-    var startButton;
+    var input; 
     var problem;
-    var inputCount;
-
-    var answerText; // answer to current problem
+    var answerText;
 
     // problem paramiters
     const defaultMin = 2;
     const defaultMax = 9;
-    const defaultOps = "x";
+    const defaultOps = "x"; // "+-x/";
     const defaultGoal = 36;
 
-    // Unicode math operator chars
     const addChar  = "\u002B";
     const subChar  = "\u2212";
     const multChar = "\u00D7";
@@ -39,15 +38,15 @@
 
     function menuLinkClick(e) {
       e.preventDefault();
-      var goal = inputCount.value;
+      var goal = document.getElementById("inputGoal").value;
       var href = e.target.getAttribute("href");
       var searchParams = new URLSearchParams(href);
       searchParams.set("goal", goal);
       window.location.href = `?${searchParams.toString()}`;
     }
-    function menuReloadButton() {
+    function menuReload() {
       if (!window.location.search) {
-        window.location.href = `?goal=${inputCount.value}`;
+        window.location.href = `?goal=${document.getElementById("inputGoal").value}`;
       } else {
         window.location.reload();
       }
@@ -56,20 +55,16 @@
 
     function onLoad() {
 
-      startButton = document.getElementById('startButton');
-
       problem = document.getElementById("problem");
-
-      answerInput = document.getElementById('answerInput');
-      answerInput.addEventListener('input', anwserInputChanged);
-      answerInput.addEventListener("keydown", onKey);
-      answerInput.addEventListener('focus', (event) => {
+      input = document.getElementById('answerInput');
+      input.addEventListener('input', inputChanged);
+      input.addEventListener("keydown", onKey);
+      input.addEventListener('focus', (event) => {
         window.scrollTo(0, 0);
       });
 
-      inputCount = document.getElementById("inputCount");
-      inputCount.addEventListener('input', e => {
-        var goal = inputCount.value;
+      document.getElementById("inputGoal").addEventListener('input', e => {
+        var goal = document.getElementById("inputGoal").value;
         var searchParams = new URLSearchParams(window.location.search);
         searchParams.set("goal", goal);
         var newQStr = searchParams.toString();
@@ -77,25 +72,25 @@
             window.history.replaceState(null, null, `?${newQStr}`);
         }
       });
-      inputCount.addEventListener('keydown', event => {
+      document.getElementById("inputGoal").addEventListener('keydown', event => {
         if (event.key === "Enter") {
-          menuReloadButton();
+          menuReload();
         }
       });
-      inputCount.addEventListener('focus', e =>{
+      document.getElementById("inputGoal").addEventListener('focus', e =>{
         e.target.select();
       });
 
-      startButton.onclick = function() {
+      document.getElementById('startButton').onclick = function() {
         document.getElementById('buttonDiv').style.display = "none";
         document.getElementById('answerDiv').style.display = "block";
         
         setParamsFromURL();
         newProblem();       
 
-        incorrectCount = correctCount = 0;
+        incorrectCount = correctCount = endTime = 0;
         startTime = Date.now();
-        updateStatus();
+        updateStats();
         addNewScore();
       };
 
@@ -105,38 +100,26 @@
       };
       document.getElementById('menueClose').onclick = function() {
         document.getElementById('menue').style.display = "none";
-        // TODO: implement proper run state
-        if (answerInput.offsetParent === null) {
-          startButton.focus();
-        } else {
-          answerInput.focus();
-        }
+        input.focus();
       };
-
-      var links = Array.prototype.slice.call(document.getElementById('settingsLinks').getElementsByTagName('a'));
+      var links = Array.prototype.slice.call(document.getElementsByTagName('a'));
       for(var i = 0; i < links.length; i++) {
         links[i].addEventListener('click', menuLinkClick);
       }
 
       setParamsFromURL();
-      updateStatus();
+      updateStats();
       loadScoreHistory();
-     
-      var showMenue = !window.location.search;
-      if (showMenue) {
-        document.getElementById('menueOpen').onclick();
-      } 
-      
-      document.getElementById('mainContent').style.display ='block';
 
-      if (!showMenue) {
-        startButton.focus();
+      if (!window.location.search) {
+        document.getElementById('menueOpen').onclick();
+      } else {
+        document.getElementById('startButton').focus();
       }
 
       if (window.location.hash === "#debug") {
         document.getElementById('debugDiv').style.display = "block";
       }
-      
     }
 
     function setParamsFromURL() {
@@ -167,8 +150,8 @@
       }
       problemCountGoal = searchParams.get("goal") || defaultGoal;
 
-      document.getElementById('inputCount').value = problemCountGoal;
-      document.getElementById('settingsInfo').textContent = 
+      document.getElementById('inputGoal').value = problemCountGoal;
+      document.getElementById('settingsInfo').innerHTML = 
         `( ${getParamsInfoString()} )`;
     }
     function getParamsInfoString(goal=problemCountGoal, ops=operators, min=minValue, max=maxValue) {
@@ -186,58 +169,59 @@
       return parts.join(" ");
     }
 
-    function updateStatus() {
-      var status = document.getElementById('status');
+    function updateStats() {
+      var stats = document.getElementById('stats');
 
       if (incorrectCount != 0 && !incorrectCount) {
-        status.textContent = "\u00A0"; //`0/${problemCountGoal}`;
+        stats.innerHTML = "\u00A0"; //`0/${problemCountGoal}`;
         return;
       }
 
-      // status  [13/39 | Incorrect: n ]
-      status.textContent = `${correctCount}/${problemCountGoal} | Incorrect: ${incorrectCount}`;
+      // stats  [13/39 | Incorrect: n ]
+      stats.innerHTML = `${correctCount}/${problemCountGoal} | Incorrect: ${incorrectCount}`;
     }
 
-    function anwserInputChanged() {
+    function inputChanged() {
       
-      if (answerInput.value === answerText) {
+      if (input.value === answerText) {
 
         ++correctCount;
-        updateStatus();
+        updateStats();
 
         if (correctCount >= problemCountGoal) {
-          var seconds = Math.round((Date.now() - startTime) / 1000);
-          problem.textContent = `Finished in ${seconds}s`;
+          endTime = Date.now();
+          var seconds = Math.round((endTime-startTime)/1000);
+          problem.innerHTML = `Finished in ${seconds}s`;
 
-          document.getElementById('buttonDiv').style.display = "block";
-          document.getElementById('answerDiv').style.display = "none";
+        document.getElementById('buttonDiv').style.display = "block";
+        document.getElementById('answerDiv').style.display = "none";
 
-          updateScore(seconds);
+        updateScore(seconds);
 
-          startButton.focus();
+        document.getElementById('startButton').focus();
 
         } else {
           newProblem();
           window.scrollTo(0, 0);
         }
-      } else if (!answerText.startsWith(answerInput.value)) {
+      } else if (!answerText.startsWith(input.value)) {
         
         if (!incorrectFlag) {
           incorrectFlag = true;
           ++incorrectCount;
-          updateStatus();
+          updateStats();
         }
         
-        answerInput.setCustomValidity("Invalid field.");
+        input.setCustomValidity("Invalid field.");
       } else {
-        answerInput.setCustomValidity("");
+        input.setCustomValidity("");
       }
     }
 
     function onKey(event) {
       if (event.key === "Enter") {
-        answerInput.value = "";
-        anwserInputChanged();
+        input.value = "";
+        inputChanged();
       }
     }
 
@@ -267,13 +251,13 @@
         }
 
         newProblemText = `${lv} ${operatorToChar(op)} ${rv}`;
-      } while (problem.textContent === newProblemText || (op === "/" && rv == 0));
+      } while (problem.innerHTML === newProblemText || (op === "/" && rv == 0));
 
-      problem.textContent = newProblemText;
+      problem.innerHTML = newProblemText;
       answerText = `${getAnswer(op, lv, rv)}`;
 
-      answerInput.value = "";
-      answerInput.focus();
+      input.value = "";
+      input.focus();
     }
 
     function operatorToChar(op) {
@@ -357,17 +341,17 @@
       tdTime.textContent = item.isCompleate ? `${item.time}s` : 'x';
       row.appendChild(tdTime);
 
-      // if (item.isCompleate) {
+      if (item.isCompleate) {
         var tdIncorrect = document.createElement('td');
         tdIncorrect.setAttribute('class', 'tdHistoryIncorrect');
         tdIncorrect.textContent = item.incorrectCount > 0 ? `-${item.incorrectCount}` : '';
         row.appendChild(tdIncorrect);
-      // }
+      }
 
       return row;
     }
 
-    function loadScoreHistory(limit=50) {
+    function loadScoreHistory() {
       const scorsStr = window.localStorage.getItem(lsHistoryKey);
       if (scorsStr) {
         scoreHistory = JSON.parse(scorsStr);
@@ -376,12 +360,11 @@
       document.getElementById('historyHeader').style.display = 
         scoreHistory.length > 0 ? "block" : "none";
 
-      document.getElementById('historyShowAllLink').style.display = 
-        scoreHistory.length > limit ? "block" : "none";
+      var limit = 50;
 
       var lastSettingsStr = "";
       var table = document.getElementById('historyTable');
-      table.textContent = '';
+      table.innerHTML = '';
       for (var i = scoreHistory.length - 1; i >= 0; --i) {
         var item = scoreHistory[i];
         var curSettingsStr = getParamsInfoString(item.count, item.ops, item.minValue, item.maxValue)
@@ -394,11 +377,6 @@
         if (--limit <= 0)
           break;
       }
-    }
-
-    function showAllHistory() {
-      loadScoreHistory(scoreHistoryMaxLength);
-      return false;
     }
 
 
@@ -456,39 +434,33 @@
       }
       storeScoreHistory();
     }
-    function test_clearLocalStore() {
-      window.localStorage.clear();
-    }
 
   </script>
 
   <style>
 
-    body {
-      /* font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif */
-      font-family: Arial, Helvetica, sans-serif;
-    }
+
 
       #problem {
         margin-top: 1.3em;
         margin-bottom: 1.3em;
         vertical-align: middle;
         text-align: center;
-        font-size: 2.5rem;
+        font-size: 250%
       }
 
       #answerInput {
         text-align: center;
         width: 5em;
-        font-size: 2rem;
+        font-size: 200%;
       }
 
-      #settingsInfo {
-        font-size: 1.30rem;
+      #stats, #settingsInfo {
+        font-size: 125%;
       }
 
       #startButton {
-        font-size: 2.5rem;
+        font-size: 250%;
         padding: 0.2em 1em 0.2em 1em;
       }
 
@@ -519,13 +491,9 @@
         color: black;
       }
 
-      #mainContent {
-        display: none;
-      }
-
       #menue {
         width: 100%;
-        min-height: 100%;
+        height: 100%;
         position: absolute;
         top: 0;
         left: 0;
@@ -535,57 +503,52 @@
 
 
       #menueHeader {
-        margin: 0.5em; 
+        margin: 8px;
       }
 
 
 
-      #menueContent {
+      #links {
         display:table;
         margin-top: 2em;
         margin-left: auto;
         margin-right: auto;
-        font-size: 1.25rem;
+        font-size: 115%;
       }
 
       
-      #menueContent ul {
+      #links ul {
         list-style-type: none;
         padding: 0;
       }
-      #menueContent li {
+      #links li {
         margin: 0em 0em 0.6em 0em ;
       }
-      #menueContent a {
+      #links a {
         margin: 0em 0.25em 0em 0.25em ;
       }
-      #inputCount {
+      #inputGoal {
         text-align: center;
         margin: 0em 0.25em 0em 0.25em ;
         width: 3em;
-        font-size: inherit;
+        font-size: 105%;
       }
-      #menuReloadButton {
-        font-size: inherit;
+      #menuReload {
+        font-size: 105%;
       }
 
 
-      #menueContent a:link {
+      #links a:link {
         color: black;
       }
 
-      #menueContent a:visited {
+      #links a:visited {
         color: black;
-      }
-
-      #status {
-        padding: 0 0.5em;
-        font-size: 1.25rem;
       }
 
       #menueOpen, #menueClose {
         padding: 0 0.25em;
-        font-size: 1.4rem;
+        font-size: 140%;
       }
 
       #menueOpen:after {
@@ -595,26 +558,23 @@
         content: '\2716';
       }
 
-      #historyDiv {
-        margin: 1em 0;
-      }
-
+/*      #historyDiv {
+         display: table;
+         margin: 0 auto;
+      }*/
       #historyHeader {
         display: none;
-        font-weight: bold;
-        margin-bottom: 0.25em;
       }
 
       .tdHistorySettingsHeader {
-        padding-top: 0.3em;
-        white-space: nowrap;
+        padding-top: 5px;
       }
       .tdHistoryDate {
         color: darkgray;
-       padding-left: 0.4em; 
+       padding-left: 7px; 
       }
       .tdHistoryTime {
-        padding-left: 0.58em;
+        padding-left: 8px;
       }
 
       #debugDiv {
@@ -625,84 +585,113 @@
 </head>
 
 <body onload="onLoad();">
+  <div id="header">
+    <span id="stats"></span>
+    <span id="menueOpen" style="float: right;" ></span>
+  </div>
+  <p id="problem"></p>
+  
 
-  <div id="mainContent">
-    <div id="header">
-      <span id="status"></span>
-      <span id="menueOpen" style="float: right;"></span>
-    </div>
-    <p id="problem"></p>
-
-    <div id="buttonDiv">
+  <div id="buttonDiv">
       <p id="settingsInfo"></p>
       <button id="startButton">Start</button>
-    </div>
-
-    <div id="answerDiv">
-      <input id="answerInput" placeholder="Answer" type="number" inputmode="numeric" pattern="\d*" />
-    </div>
-
-    <div id="debugDiv">
-      <button onclick="test_saveRandomScores();">Gen Test Data</button>
-      <button onclick="test_clearLocalStore();">Clear Local Store</button>
-    </div>
   </div>
+
+  <div id="answerDiv">
+    <input id="answerInput" placeholder="Answer" type="number" inputmode="numeric" pattern="\d*" />
+  </div>
+
+
 
   <div id="menue">
-    <div id="menueHeader">
-      <span></span>
-      <span id="menueClose" style="float: right;"></span>
-    </div>
-  
-    <div id="menueContent">
-      <ul id="settingsLinks">
-        <li>
-          Problems: <input id="inputCount" type="number" min="1" inputmode="numeric" pattern="\d*" />
-          <button id="menuReloadButton" onclick="menuReloadButton();">Reload</button>
-        </li>
-        <li>Addition:
-          <a href="?vrange=2,12&ops=add&goal=36">2-12</a> |
-          <a href="?vrange=2,24&ops=add&goal=36">2-24</a>
-        </li>
-        <li>Subtraction:
-          <a href="?vrange=2,12&ops=sub&goal=36">2-12</a> |
-          <a href="?vrange=2,24&ops=sub&goal=36">2-24</a>
-        </li>
-        <li>Multiplication:
-          <a href="?vrange=2,9&ops=mult&goal=36">2-9</a> |
-          <a href="?vrange=6,9&ops=mult&goal=36">6-9</a> |
-          <a href="?vrange=2,12&ops=mult&goal=36">2-12</a>
-        </li>
-        <li>Division:
-          <a href="?vrange=2,9&ops=div&goal=36">2-9</a> |
-          <a href="?vrange=6,9&ops=div&goal=36">6-9</a> |
-          <a href="?vrange=2,12&ops=div&goal=36">2-12</a>
-        </li>
-        <li>All:
-          <a href="?vrange=2,9&ops=add,sub,mult,div&goal=36">2-9</a> |
-          <a href="?vrange=6,9&ops=add,sub,mult,div&goal=36">6-9</a> |
-          <a href="?vrange=2,12&ops=add,sub,mult,div&goal=36">2-12</a>
-        </li>
-        <li>Add and Sub:
-          <a href="?vrange=2,24&ops=add,sub&goal=36">2-24</a> |
-          <a href="?vrange=2,36&ops=add,sub&goal=36">2-36</a>
-        </li>
-        <li>Mult and Div:
-          <a href="?vrange=2,9&ops=mult,div&goal=36">2-9</a> |
-          <a href="?vrange=2,12&ops=mult,div&goal=36">2-12</a>
-        </li>
-      </ul>
-  
-      <div id="historyDiv">
-        <span id="historyHeader">History</span>
-        <table id="historyTable">
-        </table>
-        <a id="historyShowAllLink" href="" onclick="return showAllHistory();">Show all</a>
-      </div>
-  
+  <div id="menueHeader">
+    <span></span>
+    <span id="menueClose" style="float: right;"></span>
+  </div>
+
+  <div id="links">
+    <ul>
+      <li>
+        Problems: <input id="inputGoal" type="number" min="1" inputmode="numeric" pattern="\d*" />
+        <button id="menuReload" onclick="menuReload();">Reload</button>
+      </li>
+      <li>Addition: 
+        <a href="?vrange=2,12&ops=add&goal=36">2-12</a> |
+        <a href="?vrange=2,24&ops=add&goal=36">2-24</a> 
+      </li>
+      <li>Subtraction: 
+        <a href="?vrange=2,12&ops=sub&goal=36">2-12</a> |
+        <a href="?vrange=2,24&ops=sub&goal=36">2-24</a>
+      </li>
+      <li>Multiplication: 
+        <a href="?vrange=2,9&ops=mult&goal=36">2-9</a> | 
+        <a href="?vrange=6,9&ops=mult&goal=36">6-9</a> | 
+        <a href="?vrange=2,12&ops=mult&goal=36">2-12</a>
+      </li>
+      <li>Division: 
+        <a href="?vrange=2,9&ops=div&goal=36">2-9</a> |
+        <a href="?vrange=6,9&ops=div&goal=36">6-9</a> |
+        <a href="?vrange=2,12&ops=div&goal=36">2-12</a> 
+      </li>
+      <li>All: 
+        <a href="?vrange=2,9&ops=add,sub,mult,div&goal=36">2-9</a> |
+        <a href="?vrange=6,9&ops=add,sub,mult,div&goal=36">6-9</a> |
+        <a href="?vrange=2,12&ops=add,sub,mult,div&goal=36">2-12</a> 
+      </li>
+      <li>Add and Sub:
+        <a href="?vrange=2,24&ops=add,sub&goal=36">2-24</a> |
+        <a href="?vrange=2,36&ops=add,sub&goal=36">2-36</a>  
+      </li>
+      <li>Mult and Div:
+        <a href="?vrange=2,9&ops=mult,div&goal=36">2-9</a> |
+        <a href="?vrange=2,12&ops=mult,div&goal=36">2-12</a>  
+      </li>
+    </ul>
+
+    <div id="historyDiv"  >
+      <h4 id="historyHeader">History</h4>
+      <table id="historyTable" >
+      </table> 
     </div>
 
   </div>
+
+
+<!--     <table>
+      <tr>
+        <td>Oprand min:</td>
+        <td><input type="number" name="inputOpMin" /></td>
+      </tr>
+      <tr>
+        <td>Oprand max:</td>
+        <td><input type="number" name="inputOpMax" /></td>
+      </tr>
+      <tr>
+        <td colspan="2">
+        <span>
+          <input type="checkbox" name="inputAdd" value="Add" /> Add<br/>
+          <input type="checkbox" name="inputMult" value="Mult" /> Mult<br/>
+          <input type="checkbox" name="inputSub" value="Sub" /> Sub<br/>
+          <input type="checkbox" name="inputDiv" value="Div" /> Div<br/>
+        </span>
+        </td>
+      </tr>
+      <tr>
+        <td>Problem count:</td>
+        <td><input type="number" name="inputGoal" /></td>
+      </tr>
+    </table>
+    <button id="paramSetButton">OK</button>
+    <button id="paramCancelButton">Cancel</button> -->
+  
+
+
+  </div>
+
+
+<div id="debugDiv">
+  <button onclick="test_saveRandomScores();">Gen Test Data</button>
+</div>
 
 </body>
 
