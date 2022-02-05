@@ -9,12 +9,12 @@
 
     var input; 
     var problem;
-    var anwserText;
+    var answerText;
 
     function onLoad() {
 
       problem = document.getElementById("problem");
-      input = document.getElementById('anwserInput');
+      input = document.getElementById('answerInput');
       input.addEventListener('input', updateValue);
       input.addEventListener("keydown", onKey);
 
@@ -26,7 +26,7 @@
 
     function updateValue(e) {
       
-      if (e.target.value === anwserText) {
+      if (e.target.value === answerText) {
         newProblem();
       }
     }
@@ -40,7 +40,7 @@
 
     // Ideas:
     // - Equal/balanced number of operator types, numbers
-    // - Present problems in seqence, automaticly moving on when correct anwser is input
+    // - Present problems in seqence, automaticly moving on when correct answer is input
 
     // flshcard: how many in 2 min; url encodes parameters (oprand rang and operators)
 
@@ -61,14 +61,14 @@
       } while (problem.innerHTML === newProblemText);
 
       problem.innerHTML = newProblemText;
-      anwserText = getAnwserText(op, lv, rv);
+      answerText = getAnswerText(op, lv, rv);
 
       input.value = "";
       input.focus();
 
     }
 
-    function getAnwserText(op, lv, rv) {
+    function getAnswerText(op, lv, rv) {
       switch (op) {
         case '+':
           return `${lv + rv}`;
@@ -100,7 +100,7 @@
         font-size: 250%
       }
 
-      #anwserInput {
+      #answerInput {
         text-align: center;
         width: 5em;
         font-size: 200%
@@ -121,6 +121,10 @@
           margin: 0; 
       }
 
+      input[type=number] {
+          -moz-appearance:textfield; /* Firefox */
+      }
+
 
     </style>
 </head>
@@ -129,7 +133,7 @@
 
   <p id="problem"><button id="startButton">Start</button></p>
   <div class="center">
-    <input id="anwserInput" placeholder="Anwser" type="number"  />
+    <input id="answerInput" placeholder="Answer" type="number"  />
   </div>
   
 
