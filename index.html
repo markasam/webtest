@@ -96,11 +96,21 @@
       #problem {
         margin: 2em;
         vertical-align: middle;
-        /*text-align: center;*/
-        font-size: 200%
+        text-align: center;
+        font-size: 250%
       }
 
       #anwserInput {
+        text-align: center;
+        font-size: 200%
+      }
+
+      button {
+        font-size: 100%;
+        padding: 0.25em;
+      }
+
+      .center {
         text-align: center;
       }
 
@@ -110,10 +120,6 @@
           margin: 0; 
       }
 
-      html {
-          display: table;
-          margin: auto;
-      }
 
     </style>
 </head>
@@ -121,7 +127,10 @@
 <body onload="onLoad();">
 
   <p id="problem"><button id="startButton">Start</button></p>
-  <input id="anwserInput" placeholder="Anwser" type="number"  />
+  <div class="center">
+    <input id="anwserInput" placeholder="Anwser" type="number"  />
+  </div>
+  
 
 </body>
 
