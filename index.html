@@ -1,0 +1,175 @@
+<html>
+
+<head>
+  <title>Problem Set</title>
+
+  <script>
+    'use strict';
+
+    var input; 
+    var problem;
+    var anwserText;
+
+    function onLoad() {
+
+      problem = document.getElementById("problem");
+      input = document.getElementById('anwserInput');
+      input.addEventListener('input', updateValue);
+      input.addEventListener("keydown", onKey);
+
+      newProblem();
+    }
+
+    function updateValue(e) {
+      
+      if (e.target.value === anwserText) {
+        newProblem();
+      }
+    }
+
+    function onKey(event) {
+      if (event.key === "Enter") {
+        input.value = "";
+        values.innerHTML = "";
+      }
+    }
+
+    // Ideas:
+    // - Equal/balanced number of operator types, numbers
+    // - Present problems in seqence, automaticly moving on when correct anwser is input
+
+    // flshcard: how many in 2 min; url encodes parameters (oprand rang and operators)
+
+    function newProblem() {
+
+      var minValue = 2;
+      var maxValue = 9;
+      var operators = "+x"; //"+-x/";
+
+      var newProblemText, lv, rv, op;
+
+      do {
+        var lv = getRandomInt(maxValue-minValue+1) + minValue;
+        var rv = getRandomInt(maxValue-minValue+1) + minValue;
+        var op = operators[getRandomInt(operators.length)];
+
+        newProblemText = `${lv} ${op} ${rv}`;
+      } while (problem.innerHTML === newProblemText);
+
+      problem.innerHTML = newProblemText;
+      anwserText = getAnwserText(op, lv, rv);
+
+      input.value = "";
+      input.focus();
+
+    }
+
+    function getAnwserText(op, lv, rv) {
+      switch (op) {
+        case '+':
+          return `${lv + rv}`;
+        case '-':
+          return `${lv - rv}`;
+        case 'x':
+        case '*':
+          return `${lv * rv}`;
+        case '/':
+          return `${lv / rv}`;
+        default:
+          console.log(`Unkown operator: ${op}.`);
+          return null;
+      }
+    }
+
+    function addRow(table) {
+        var rowCount = table.rows.length;
+        var row = table.insertRow(rowCount);
+        var c = 0;
+        var maxValue = 9;
+
+
+        var operators = "x"; //"+-x/";
+
+        for (var i = 0; i < 3; ++i) {
+            var lv = getRandomInt(maxValue+1);
+            var rv = getRandomInt(maxValue+1);
+            var op = operators[getRandomInt(operators.length)];
+
+            var newcell = row.insertCell(c++);
+            newcell.innerHTML = `${lv} ${op} ${rv}`; 
+            newcell.className = "prob"; 
+
+            newcell = row.insertCell(c++);
+            newcell.innerHTML = "="; newcell.className = "eql"; 
+            newcell = row.insertCell(c++);
+            newcell.innerHTML = "_____"; newcell.className = "anwser"; 
+
+
+            // row.insertCell(c++).innerHTML= 
+            // `${getRandomInt(maxValue+1)} ${operators[getRandomInt(operators.length)]} ${getRandomInt(maxValue+1)} = _____`;
+
+
+        }
+    }
+
+    function getRandomInt(max) {
+      return Math.floor(Math.random() * max);
+    }
+
+  </script>
+
+  <style>
+
+        #problem {
+          padding: 50px;
+          font-size: 200%
+        }
+
+        #anwserInput {
+          text-align: center;
+        }
+        /*
+        #psTable {
+          table-layout: fixed;
+          width: 100%;
+          border: 1px solid red;
+          font-family: monospace;
+          font-size: 200%
+        }
+        */
+
+
+        td {
+            height: 65px;
+            font-size: 180%
+        }
+        td.eql  {
+          padding: 10px;
+        }
+        td.val  {
+          text-align:right;
+        }
+        td.prob  {
+          text-align:right;
+        }
+        td.anwser {
+          width:105px;
+        }
+
+        input {
+          /*display: none;*/
+        }
+    </style>
+</head>
+
+<body onload="onLoad();">
+
+  <p id="problem"></p>
+  <input id="anwserInput" placeholder="Anwser" pattern="[0-9]*" />
+
+  <table id="psTable">
+
+  </table>
+</body>
+
+</html>
