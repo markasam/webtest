@@ -19,9 +19,9 @@
       input.addEventListener("keydown", onKey);
 
       document.getElementById('startButton').onclick = function() {
+        document.getElementById('answerDiv').style.display = "block";
         newProblem();
       };
-      //newProblem();
     }
 
     function updateValue(e) {
@@ -103,7 +103,7 @@
       #answerInput {
         text-align: center;
         width: 5em;
-        font-size: 200%
+        font-size: 200%;
       }
 
       button {
@@ -111,8 +111,9 @@
         padding: 0.25em;
       }
 
-      .center {
+      #answerDiv {
         text-align: center;
+        display: none;
       }
 
       input::-webkit-outer-spin-button,
@@ -132,8 +133,8 @@
 <body onload="onLoad();">
 
   <p id="problem"><button id="startButton">Start</button></p>
-  <div class="center">
-    <input id="answerInput" placeholder="Answer" type="number"  />
+  <div id="answerDiv">
+    <input id="answerInput" placeholder="Answer" type="number" inputmode="numeric" pattern="\d*" />
   </div>
   
 
