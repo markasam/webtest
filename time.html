@@ -7,7 +7,7 @@
   <script>
     'use strict';
 
-    // stats  [13/39 | n correct | m incorrect]
+    // stats  [13/39 | m incorrect]
     var incorrectCount;
     var correctCount;
     var problemCountGoal;
@@ -31,7 +31,7 @@
         document.getElementById('answerDiv').style.display = "block";
         newProblem();
 
-        problemCountGoal = 13*3 *0+1;
+        problemCountGoal = 13*3;
         incorrectCount = correctCount = endTime = 0;
         startTime = Date.now();
         updateStats();
