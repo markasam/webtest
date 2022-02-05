@@ -2,6 +2,7 @@
 
 <head>
   <title>Problem Set</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
 
   <script>
     'use strict';
@@ -17,7 +18,10 @@
       input.addEventListener('input', updateValue);
       input.addEventListener("keydown", onKey);
 
-      newProblem();
+      document.getElementById('startButton').onclick = function() {
+        newProblem();
+      };
+      //newProblem();
     }
 
     function updateValue(e) {
@@ -81,37 +85,6 @@
       }
     }
 
-    function addRow(table) {
-        var rowCount = table.rows.length;
-        var row = table.insertRow(rowCount);
-        var c = 0;
-        var maxValue = 9;
-
-
-        var operators = "x"; //"+-x/";
-
-        for (var i = 0; i < 3; ++i) {
-            var lv = getRandomInt(maxValue+1);
-            var rv = getRandomInt(maxValue+1);
-            var op = operators[getRandomInt(operators.length)];
-
-            var newcell = row.insertCell(c++);
-            newcell.innerHTML = `${lv} ${op} ${rv}`; 
-            newcell.className = "prob"; 
-
-            newcell = row.insertCell(c++);
-            newcell.innerHTML = "="; newcell.className = "eql"; 
-            newcell = row.insertCell(c++);
-            newcell.innerHTML = "_____"; newcell.className = "anwser"; 
-
-
-            // row.insertCell(c++).innerHTML= 
-            // `${getRandomInt(maxValue+1)} ${operators[getRandomInt(operators.length)]} ${getRandomInt(maxValue+1)} = _____`;
-
-
-        }
-    }
-
     function getRandomInt(max) {
       return Math.floor(Math.random() * max);
     }
@@ -120,56 +93,36 @@
 
   <style>
 
-        #problem {
-          padding: 50px;
-          font-size: 200%
-        }
+      #problem {
+        margin: 2em;
+        vertical-align: middle;
+        /*text-align: center;*/
+        font-size: 200%
+      }
 
-        #anwserInput {
-          text-align: center;
-        }
-        /*
-        #psTable {
-          table-layout: fixed;
-          width: 100%;
-          border: 1px solid red;
-          font-family: monospace;
-          font-size: 200%
-        }
-        */
+      #anwserInput {
+        text-align: center;
+      }
 
+      input::-webkit-outer-spin-button,
+      input::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0; 
+      }
 
-        td {
-            height: 65px;
-            font-size: 180%
-        }
-        td.eql  {
-          padding: 10px;
-        }
-        td.val  {
-          text-align:right;
-        }
-        td.prob  {
-          text-align:right;
-        }
-        td.anwser {
-          width:105px;
-        }
+      html {
+          display: table;
+          margin: auto;
+      }
 
-        input {
-          /*display: none;*/
-        }
     </style>
 </head>
 
 <body onload="onLoad();">
 
-  <p id="problem"></p>
-  <input id="anwserInput" placeholder="Anwser" type="number" />
+  <p id="problem"><button id="startButton">Start</button></p>
+  <input id="anwserInput" placeholder="Anwser" type="number"  />
 
-  <table id="psTable">
-
-  </table>
 </body>
 
 </html>
