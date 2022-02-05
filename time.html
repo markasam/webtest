@@ -1,0 +1,216 @@
+<html>
+
+<head>
+  <title>Flash Math</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <script>
+    'use strict';
+
+    // stats  [13/39 | n correct | m incorrect]
+    var incorrectCount;
+    var correctCount;
+    var problemCountGoal;
+    var startTime;
+    var endTime;
+
+    // elements
+    var input; 
+    var problem;
+    var answerText;
+
+    function onLoad() {
+
+      problem = document.getElementById("problem");
+      input = document.getElementById('answerInput');
+      input.addEventListener('input', inputChanged);
+      input.addEventListener("keydown", onKey);
+
+      document.getElementById('startButton').onclick = function() {
+        document.getElementById('buttonDiv').style.display = "none";
+        document.getElementById('answerDiv').style.display = "block";
+        newProblem();
+
+        problemCountGoal = 13*3 *0+1;
+        incorrectCount = correctCount = endTime = 0;
+        startTime = Date.now();
+        updateStats();
+      };
+    }
+
+    function updateStats() {
+      var stats = document.getElementById('stats');
+
+      // stats  [13/39 | incorrect: n | time: t]
+      stats.innerHTML = `${correctCount}/${problemCountGoal} | Incorrect: ${incorrectCount}`;
+    }
+
+    function inputChanged() {
+      
+      if (input.value === answerText) {
+
+        ++correctCount;
+        updateStats();
+
+        if (correctCount >= problemCountGoal) {
+          endTime = Date.now();
+          problem.innerHTML = `Finished in ${Math.round((endTime-startTime)/1000)}s`;
+
+        document.getElementById('buttonDiv').style.display = "block";
+        document.getElementById('answerDiv').style.display = "none";
+
+        } else {
+          newProblem();
+        }
+      } else if (!answerText.startsWith(input.value)) {
+        
+        if (!incorrectFlag) {
+          incorrectFlag = true;
+          ++incorrectCount;
+          updateStats();
+        }
+        
+        input.setCustomValidity("Invalid field.");
+      } else {
+        input.setCustomValidity("");
+      }
+    }
+
+    function onKey(event) {
+      if (event.key === "Enter") {
+        input.value = "";
+        inputChanged();
+      }
+    }
+
+
+
+    // Ideas:
+    // - Equal/balanced number of operator types, numbers
+    // - Present problems in seqence, automaticly moving on when correct answer is input
+
+    // flshcard: how many in 2 min; url encodes parameters (oprand rang and operators)
+
+    var incorrectFlag;
+    function newProblem() {
+      incorrectFlag = false;
+
+      var minValue = 2;
+      var maxValue = 9;
+      var operators = "+x"; //"+-x/";
+
+      var newProblemText, lv, rv, op;
+
+      do {
+        var lv = getRandomInt(maxValue-minValue+1) + minValue;
+        var rv = getRandomInt(maxValue-minValue+1) + minValue;
+        var op = operators[getRandomInt(operators.length)];
+
+        newProblemText = `${lv} ${op} ${rv}`;
+      } while (problem.innerHTML === newProblemText);
+
+      problem.innerHTML = newProblemText;
+      answerText = getAnswerText(op, lv, rv);
+
+      input.value = "";
+      input.focus();
+
+    }
+
+    function getAnswerText(op, lv, rv) {
+      switch (op) {
+        case '+':
+          return `${lv + rv}`;
+        case '-':
+          return `${lv - rv}`;
+        case 'x':
+        case '*':
+          return `${lv * rv}`;
+        case '/':
+          return `${lv / rv}`;
+        default:
+          console.log(`Unkown operator: ${op}.`);
+          return null;
+      }
+    }
+
+    function getRandomInt(max) {
+      return Math.floor(Math.random() * max);
+    }
+
+  </script>
+
+  <style>
+
+      #problem {
+        margin: 1.5em;
+        vertical-align: middle;
+        text-align: center;
+        font-size: 250%
+      }
+
+      #answerInput {
+        text-align: center;
+        width: 5em;
+        font-size: 200%;
+      }
+
+      button {
+        font-size: 250%;
+        padding: 0.25em;
+      }
+
+      #buttonDiv {
+        text-align: center;
+      }
+
+      #answerDiv {
+        text-align: center;
+        display: none;
+      }
+
+      input::-webkit-outer-spin-button,
+      input::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0; 
+      }
+
+      input[type=number] {
+          -moz-appearance:textfield; /* Firefox */
+      }
+
+      input:invalid {
+        color: red;
+      }
+
+      input:valid {
+        color: black;
+      }
+/*      input:invalid {
+        border: 2px dashed red;
+      }
+
+      input:valid {
+        border: 2px solid black;
+      }*/
+
+
+    </style>
+</head>
+
+<body onload="onLoad();">
+  <p id="stats"></p>
+  <p id="problem"></p>
+
+  <div id="buttonDiv">
+      <button id="startButton">Start</button>
+  </div>
+
+  <div id="answerDiv">
+    <input id="answerInput" placeholder="Answer" type="number" inputmode="numeric" pattern="\d*" />
+  </div>
+  
+
+</body>
+
+</html>
