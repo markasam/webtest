@@ -91,12 +91,28 @@
         operators = defaultOps;
       }
       problemCountGoal = searchParams.get("goal") || defaultGoal;
+
+      document.getElementById('settingsInfo').innerHTML = getParamsInfoString();
+    }
+    function getParamsInfoString() {
+      var parts = [];
+
+      //Order like this: ( add sub mult div 2-12 ) 
+      parts.push("(");
+      if (operators.includes("+")) parts.push("add");
+      if (operators.includes("-")) parts.push("sub");
+      if (operators.includes("x")) parts.push("mult");
+      if (operators.includes("/")) parts.push("div");
+      parts.push(`${minValue}-${maxValue}`);
+      parts.push(")");
+
+      return parts.join(" ");
     }
 
     function updateStats() {
       var stats = document.getElementById('stats');
 
-      if (!incorrectCount) {
+      if (incorrectCount != 0 && !incorrectCount) {
         stats.innerHTML = `0/${problemCountGoal}`;
         return;
       }
@@ -272,7 +288,7 @@
         margin-top: 2em;
         margin-left: auto;
         margin-right: auto;
-        font-size: 1.1em;
+        font-size: 115%;
       }
 
       #links li {
@@ -296,8 +312,8 @@
       }
 
       #menueOpen, #menueClose {
-       /* padding: 0 0.5em;*/
-        font-size: 125%;
+        padding: 0 0.25em;
+        font-size: 140%;
       }
 
       #menueOpen:after {
@@ -314,13 +330,13 @@
 <body onload="onLoad();">
   <div id="header">
     <span id="stats"></span>
-    <span id="menueOpen" style="float: right;" >
-        
-    </span>
+    <span id="menueOpen" style="float: right;" ></span>
   </div>
   <p id="problem"></p>
+  
 
   <div id="buttonDiv">
+      <p id="settingsInfo"></p>
       <button id="startButton">Start</button>
   </div>
 
