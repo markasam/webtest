@@ -19,6 +19,11 @@
     var problem;
     var answerText;
 
+    // problem paramiters
+    var minValue = 2;
+    var maxValue = 9;
+    var operators = "x"; //"+-x/";
+
     function onLoad() {
 
       problem = document.getElementById("problem");
@@ -32,15 +37,45 @@
       document.getElementById('startButton').onclick = function() {
         document.getElementById('buttonDiv').style.display = "none";
         document.getElementById('answerDiv').style.display = "block";
-        newProblem();
+        
+        setParamsFromURL();
+        newProblem();       
 
-        problemCountGoal = 12*3;//  *0+1;
         incorrectCount = correctCount = endTime = 0;
         startTime = Date.now();
         updateStats();
       };
 
       document.getElementById('startButton').focus();
+    }
+
+    function setParamsFromURL() {
+      const paramsString = window.location.search; //'?vrange=2,9&ops=add,mult,sub,div&goal=36';
+      let searchParams = new URLSearchParams(paramsString);
+
+      var vrange = searchParams.get("vrange") || "2,9";
+      var vrParts = vrange.split(",");
+      minValue = parseInt(vrParts[0]) || 2;
+      maxValue = parseInt(vrParts[1]) || 9;
+      var ops = searchParams.get("ops"); // "add,mult,sub,div";
+      operators = "";
+      if (ops) {
+        var opsParts = ops.split(",");
+        
+        for (const e of opsParts) {
+          switch (e) {
+            case "add":  operators += "+"; break;
+            case "mult": operators += "x"; break;
+            case "sub":  operators += "-"; break;
+            case "div":  operators += "/"; break;
+            default: break;
+          }
+        }
+      }
+      if (operators === "") {
+        operators = "x";
+      }
+      problemCountGoal = searchParams.get("goal") || 12*3;
     }
 
     function updateStats() {
@@ -103,9 +138,7 @@
     function newProblem() {
       incorrectFlag = false;
 
-      var minValue = 2;
-      var maxValue = 9;
-      var operators = "x"; //"+-x/";
+      
 
       var newProblemText, lv, rv, op;
 
@@ -164,7 +197,7 @@
         font-size: 200%;
       }
 
-      button {
+      #startButton {
         font-size: 250%;
         padding: 0.2em 1em 0.2em 1em;
       }
@@ -195,13 +228,16 @@
       input:valid {
         color: black;
       }
-/*      input:invalid {
-        border: 2px dashed red;
-      }
 
-      input:valid {
-        border: 2px solid black;
-      }*/
+      #params {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background: white;
+        display: none;
+      }
 
 
     </style>
@@ -219,6 +255,34 @@
     <input id="answerInput" placeholder="Answer" type="number" inputmode="numeric" pattern="\d*" />
   </div>
   
+  <div id="params">
+    <table>
+      <tr>
+        <td>Oprand min:</td>
+        <td><input type="number" name="inputOpMin" /></td>
+      </tr>
+      <tr>
+        <td>Oprand max:</td>
+        <td><input type="number" name="inputOpMax" /></td>
+      </tr>
+      <tr>
+        <td colspan="2">
+        <span>
+          <input type="checkbox" name="inputAdd" value="Add" /> Add<br/>
+          <input type="checkbox" name="inputMult" value="Mult" /> Mult<br/>
+          <input type="checkbox" name="inputSub" value="Sub" /> Sub<br/>
+          <input type="checkbox" name="inputDiv" value="Div" /> Div<br/>
+        </span>
+        </td>
+      </tr>
+      <tr>
+        <td>Problem count:</td>
+        <td><input type="number" name="inputGoal" /></td>
+      </tr>
+    </table>
+    <button id="paramSetButton">OK</button>
+    <button id="paramCancelButton">Cancel</button>
+  </div>
 
 </body>
 
