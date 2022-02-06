@@ -14,6 +14,7 @@
     var problemCountGoal;
     var startTime;
     var endTime;
+    //var problemCountGoalNext = null;
 
     // elements
     var input; 
@@ -30,6 +31,15 @@
     var maxValue = defaultMax;
     var operators = defaultOps; 
 
+    function menuLinkClick(e) {
+      e.preventDefault();
+      var goal = document.getElementById("inputGoal").value;
+      var href = e.target.getAttribute("href");
+      var searchParams = new URLSearchParams(href);
+      searchParams.set("goal", goal);
+      window.location.href = `?${searchParams.toString()}`;
+    }
+
     function onLoad() {
 
       problem = document.getElementById("problem");
@@ -38,6 +48,16 @@
       input.addEventListener("keydown", onKey);
       input.addEventListener('focus', (event) => {
         window.scrollTo(0, 0);
+      });
+
+      document.getElementById("inputGoal").addEventListener('input', e => {
+        var goal = document.getElementById("inputGoal").value;
+        var searchParams = new URLSearchParams(window.location.search);
+        searchParams.set("goal", goal);
+        var newQStr = searchParams.toString();
+        if(history.replaceState) {
+            window.history.replaceState(null, null, `?${newQStr}`);
+        }
       });
 
       document.getElementById('startButton').onclick = function() {
@@ -57,7 +77,12 @@
       };
       document.getElementById('menueClose').onclick = function() {
         document.getElementById('menue').style.display = "none";
+        input.focus();
       };
+      var links = Array.prototype.slice.call(document.getElementsByTagName('a'));
+      for(var i = 0; i < links.length; i++) {
+        links[i].addEventListener('click', menuLinkClick);
+      }
 
       setParamsFromURL();
       updateStats();
@@ -92,6 +117,7 @@
       }
       problemCountGoal = searchParams.get("goal") || defaultGoal;
 
+      document.getElementById('inputGoal').value = problemCountGoal;
       document.getElementById('settingsInfo').innerHTML = getParamsInfoString();
     }
     function getParamsInfoString() {
@@ -214,6 +240,9 @@
       return Math.floor(Math.random() * max);
     }
 
+
+
+
   </script>
 
   <style>
@@ -252,21 +281,21 @@
         display: none;
       }
 
-      input::-webkit-outer-spin-button,
-      input::-webkit-inner-spin-button {
+      #answerInput::-webkit-outer-spin-button,
+      #answerInput::-webkit-inner-spin-button {
           -webkit-appearance: none;
           margin: 0; 
       }
 
-      input[type=number] {
+      #answerInput[type=number] {
           -moz-appearance:textfield; /* Firefox */
       }
 
-      input:invalid {
+      #answerInput:invalid {
         color: red;
       }
 
-      input:valid {
+      #answerInput:valid {
         color: black;
       }
 
@@ -295,17 +324,27 @@
         font-size: 115%;
       }
 
+      
+      #links ul {
+        list-style-type: none;
+        padding: 0;
+      }
       #links li {
         margin: 0em 0em 0.6em 0em ;
       }
       #links a {
         margin: 0em 0.25em 0em 0.25em ;
       }
-
-      #links ul {
-        list-style-type: none;
-        padding: 0;
+      #inputGoal {
+        text-align: center;
+        margin: 0em 0.25em 0em 0.25em ;
+        width: 3em;
+        font-size: 105%;
       }
+      #menuReload {
+        font-size: 105%;
+      }
+
 
       #links a:link {
         color: black;
@@ -355,8 +394,13 @@
     <span></span>
     <span id="menueClose" style="float: right;"></span>
   </div>
+
   <div id="links">
     <ul>
+      <li>
+        Problems: <input id="inputGoal" type="number" min="1" style="1" />
+        <button id="menuReload" onclick="javascript:location.reload(true);">Reload</button>
+      </li>
       <li>Addition: 
         <a href="?vrange=2,12&ops=add&goal=36">2-12</a> |
         <a href="?vrange=2,24&ops=add&goal=36">2-24</a> 
