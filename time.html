@@ -25,6 +25,9 @@
       input = document.getElementById('answerInput');
       input.addEventListener('input', inputChanged);
       input.addEventListener("keydown", onKey);
+      input.addEventListener('focus', (event) => {
+        window.scrollTo(0, 0);
+      });
 
       document.getElementById('startButton').onclick = function() {
         document.getElementById('buttonDiv').style.display = "none";
@@ -35,9 +38,9 @@
         incorrectCount = correctCount = endTime = 0;
         startTime = Date.now();
         updateStats();
-
-        window.scrollTo(0, 0);
       };
+
+      document.getElementById('startButton').focus();
     }
 
     function updateStats() {
@@ -60,6 +63,8 @@
 
         document.getElementById('buttonDiv').style.display = "block";
         document.getElementById('answerDiv').style.display = "none";
+
+        document.getElementById('startButton').focus();
 
         } else {
           newProblem();
@@ -100,7 +105,7 @@
 
       var minValue = 2;
       var maxValue = 9;
-      var operators = "+x"; //"+-x/";
+      var operators = "x"; //"+-x/";
 
       var newProblemText, lv, rv, op;
 
