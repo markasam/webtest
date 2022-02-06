@@ -39,6 +39,14 @@
       searchParams.set("goal", goal);
       window.location.href = `?${searchParams.toString()}`;
     }
+    function menuReload() {
+      if (!window.location.search) {
+        window.location.href = `?goal=${document.getElementById("inputGoal").value}`;
+      } else {
+        window.location.reload();
+      }
+
+    }
 
     function onLoad() {
 
@@ -58,6 +66,9 @@
         if(history.replaceState) {
             window.history.replaceState(null, null, `?${newQStr}`);
         }
+      });
+      document.getElementById("inputGoal").addEventListener('focus', e =>{
+        e.target.select();
       });
 
       document.getElementById('startButton').onclick = function() {
@@ -86,7 +97,12 @@
 
       setParamsFromURL();
       updateStats();
-      document.getElementById('startButton').focus();
+
+      if (!window.location.search) {
+        document.getElementById('menueOpen').onclick();
+      } else {
+        document.getElementById('startButton').focus();
+      }
     }
 
     function setParamsFromURL() {
@@ -398,8 +414,8 @@
   <div id="links">
     <ul>
       <li>
-        Problems: <input id="inputGoal" type="number" min="1" style="1" />
-        <button id="menuReload" onclick="javascript:location.reload(true);">Reload</button>
+        Problems: <input id="inputGoal" type="number" min="1" style="1" inputmode="numeric" pattern="\d*" />
+        <button id="menuReload" onclick="menuReload();">Reload</button>
       </li>
       <li>Addition: 
         <a href="?vrange=2,12&ops=add&goal=36">2-12</a> |
