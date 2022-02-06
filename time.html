@@ -8,7 +8,7 @@
   <script>
     'use strict';
 
-    // stats  [13/39 | m incorrect]
+    // stats  [13/39 | m Incorrect]
     var incorrectCount;
     var correctCount;
     var problemCountGoal;
@@ -21,9 +21,14 @@
     var answerText;
 
     // problem paramiters
-    var minValue = 2;
-    var maxValue = 9;
-    var operators = "x"; //"+-x/";
+    const defaultMin = 2;
+    const defaultMax = 9;
+    const defaultOps = "x"; // "+-x/";
+    const defaultGoal = 36;
+
+    var minValue = defaultMin;
+    var maxValue = defaultMax;
+    var operators = defaultOps; 
 
     function onLoad() {
 
@@ -47,6 +52,15 @@
         updateStats();
       };
 
+      document.getElementById('menueOpen').onclick = function() {
+        document.getElementById('menue').style.display = "block";
+      };
+      document.getElementById('menueClose').onclick = function() {
+        document.getElementById('menue').style.display = "none";
+      };
+
+      setParamsFromURL();
+      updateStats();
       document.getElementById('startButton').focus();
     }
 
@@ -54,10 +68,10 @@
       const paramsString = window.location.search; //'?vrange=2,9&ops=add,mult,sub,div&goal=36';
       let searchParams = new URLSearchParams(paramsString);
 
-      var vrange = searchParams.get("vrange") || "2,9";
+      var vrange = searchParams.get("vrange") || `${defaultMin},${defaultMax}`;
       var vrParts = vrange.split(",");
-      minValue = parseInt(vrParts[0]) || 2;
-      maxValue = parseInt(vrParts[1]) || 9;
+      minValue = parseInt(vrParts[0]) || defaultMin;
+      maxValue = parseInt(vrParts[1]) || defaultMax;
       var ops = searchParams.get("ops"); // "add,mult,sub,div";
       operators = "";
       if (ops) {
@@ -74,15 +88,20 @@
         }
       }
       if (operators === "") {
-        operators = "x";
+        operators = defaultOps;
       }
-      problemCountGoal = searchParams.get("goal") || 12*3;
+      problemCountGoal = searchParams.get("goal") || defaultGoal;
     }
 
     function updateStats() {
       var stats = document.getElementById('stats');
 
-      // stats  [13/39 | incorrect: n | time: t]
+      if (!incorrectCount) {
+        stats.innerHTML = `0/${problemCountGoal}`;
+        return;
+      }
+
+      // stats  [13/39 | Incorrect: n ]
       stats.innerHTML = `${correctCount}/${problemCountGoal} | Incorrect: ${incorrectCount}`;
     }
 
@@ -128,12 +147,8 @@
     }
 
 
-
     // Ideas:
     // - Equal/balanced number of operator types, numbers
-    // - Present problems in seqence, automaticly moving on when correct answer is input
-
-    // flshcard: how many in 2 min; url encodes parameters (oprand rang and operators)
 
     var incorrectFlag;
     function newProblem() {
@@ -160,7 +175,6 @@
 
       input.value = "";
       input.focus();
-
     }
 
     function getAnswer(op, lv, rv) {
@@ -234,7 +248,7 @@
         color: black;
       }
 
-      #params {
+      #menue {
         width: 100%;
         height: 100%;
         position: absolute;
@@ -244,6 +258,10 @@
         display: none;
       }
 
+      #menueHeader {
+        margin: 8px;
+      }
+
 
 
       #links {
@@ -251,7 +269,7 @@
         margin-top: 2em;
         margin-left: auto;
         margin-right: auto;
-        font-size: 110%;
+        font-size: 1.1em%;
       }
 
       #links li {
@@ -274,11 +292,28 @@
         color: black;
       }
 
+      #menueOpen, #menueClose {
+       /* padding: 0 0.5em;*/
+      }
+
+      #menueOpen:after {
+        content: '\2807';
+      }
+      #menueClose:after {
+        content: '\2716';
+      }
+
+
     </style>
 </head>
 
 <body onload="onLoad();">
-  <p id="stats"></p>
+  <div id="header">
+    <span id="stats"></span>
+    <span id="menueOpen" style="float: right;" >
+        
+    </span>
+  </div>
   <p id="problem"></p>
 
   <div id="buttonDiv">
@@ -289,36 +324,42 @@
     <input id="answerInput" placeholder="Answer" type="number" inputmode="numeric" pattern="\d*" />
   </div>
 
-  <div id="linksContainer">
-    <div id="links">
-      <ul>
-        <li>Addition: 
-          <a href="?vrange=2,12&ops=add&goal=36">2-12</a>
-        </li>
-        <li>Subtraction: 
-          <a href="?vrange=2,12&ops=sub&goal=36">2-12</a>
-        </li>
-        <li>Multiplication: 
-          <a href="?vrange=2,9&ops=mult&goal=36">2-9</a> | 
-          <a href="?vrange=6,9&ops=mult&goal=36">6-9</a> | 
-          <a href="?vrange=2,12&ops=mult&goal=36">2-12</a>
-        </li>
-        <li>Division: 
-          <a href="?vrange=2,9&ops=div&goal=36">2-9</a> |
-          <a href="?vrange=6,9&ops=div&goal=36">6-9</a> |
-          <a href="?vrange=2,12&ops=div&goal=36">2-12</a> 
-        </li>
-        <li>All: 
-          <a href="?vrange=2,9&ops=add,sub,mult,div&goal=36">2-9</a> |
-          <a href="?vrange=6,9&ops=add,sub,mult,div&goal=36">6-9</a> |
-          <a href="?vrange=2,12&ops=add,sub,mult,div&goal=36">2-12</a> 
-        </li>
-      </ul>
-    </div>
+
+
+  <div id="menue">
+  <div id="menueHeader">
+    <span></span>
+    <span id="menueClose" style="float: right;"></span>
+  </div>
+  <div id="links">
+    <ul>
+      <li>Addition: 
+        <a href="?vrange=2,12&ops=add&goal=36">2-12</a> |
+        <a href="?vrange=2,24&ops=add&goal=36">2-24</a> 
+      </li>
+      <li>Subtraction: 
+        <a href="?vrange=2,12&ops=sub&goal=36">2-12</a> |
+        <a href="?vrange=2,24&ops=sub&goal=36">2-24</a>
+      </li>
+      <li>Multiplication: 
+        <a href="?vrange=2,9&ops=mult&goal=36">2-9</a> | 
+        <a href="?vrange=6,9&ops=mult&goal=36">6-9</a> | 
+        <a href="?vrange=2,12&ops=mult&goal=36">2-12</a>
+      </li>
+      <li>Division: 
+        <a href="?vrange=2,9&ops=div&goal=36">2-9</a> |
+        <a href="?vrange=6,9&ops=div&goal=36">6-9</a> |
+        <a href="?vrange=2,12&ops=div&goal=36">2-12</a> 
+      </li>
+      <li>All: 
+        <a href="?vrange=2,9&ops=add,sub,mult,div&goal=36">2-9</a> |
+        <a href="?vrange=6,9&ops=add,sub,mult,div&goal=36">6-9</a> |
+        <a href="?vrange=2,12&ops=add,sub,mult,div&goal=36">2-12</a> 
+      </li>
+    </ul>
   </div>
 
-  <div id="params">
-    <table>
+<!--     <table>
       <tr>
         <td>Oprand min:</td>
         <td><input type="number" name="inputOpMin" /></td>
@@ -343,7 +384,10 @@
       </tr>
     </table>
     <button id="paramSetButton">OK</button>
-    <button id="paramCancelButton">Cancel</button>
+    <button id="paramCancelButton">Cancel</button> -->
+  
+
+
   </div>
 
 </body>
