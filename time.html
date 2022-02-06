@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 
 <head>
@@ -138,8 +139,6 @@
     function newProblem() {
       incorrectFlag = false;
 
-      
-
       var newProblemText, lv, rv, op;
 
       do {
@@ -147,28 +146,34 @@
         var rv = getRandomInt(maxValue-minValue+1) + minValue;
         var op = operators[getRandomInt(operators.length)];
 
+        if (op === "/") {
+          lv = lv * rv;
+        } else if (op === "-") {
+          lv = lv + rv;
+        }
+
         newProblemText = `${lv} ${op} ${rv}`;
       } while (problem.innerHTML === newProblemText);
 
       problem.innerHTML = newProblemText;
-      answerText = getAnswerText(op, lv, rv);
+      answerText = `${getAnswer(op, lv, rv)}`;
 
       input.value = "";
       input.focus();
 
     }
 
-    function getAnswerText(op, lv, rv) {
+    function getAnswer(op, lv, rv) {
       switch (op) {
         case '+':
-          return `${lv + rv}`;
+          return lv + rv;
         case '-':
-          return `${lv - rv}`;
+          return lv - rv;
         case 'x':
         case '*':
-          return `${lv * rv}`;
+          return lv * rv;
         case '/':
-          return `${lv / rv}`;
+          return lv / rv;
         default:
           console.log(`Unkown operator: ${op}.`);
           return null;
@@ -239,6 +244,26 @@
         display: none;
       }
 
+      #links {
+        margin-top: 4em;
+      }
+
+      #links li {
+        margin: 0em 0em 0.75em 0em ;
+      }
+      #links a {
+        margin: 0em 0.5em 0em 0.5em ;
+      }
+
+      /* unvisited link */
+      #links a:link {
+        color: black;
+      }
+
+      /* visited link */
+      #links a:visited {
+        color: black;
+      }
 
     </style>
 </head>
@@ -253,6 +278,27 @@
 
   <div id="answerDiv">
     <input id="answerInput" placeholder="Answer" type="number" inputmode="numeric" pattern="\d*" />
+  </div>
+
+  <div id="links">
+    <ul>
+      <li>Addition: 
+        <a href="?vrange=2,12&ops=add&goal=36">2-12</a>
+      </li>
+      <li>Subtraction: 
+        <a href="?vrange=2,12&ops=sub&goal=36">2-12</a>
+      </li>
+      <li>Multiplication: 
+        <a href="?vrange=2,9&ops=mult&goal=36">2-9</a> | 
+        <a href="?vrange=6,9&ops=mult&goal=36">6-9</a> | 
+        <a href="?vrange=2,12&ops=mult&goal=36">2-12</a>
+      </li>
+      <li>Divition: 
+        <a href="?vrange=2,9&ops=div&goal=36">2-9</a> |
+        <a href="?vrange=6,9&ops=div&goal=36">6-9</a> |
+        <a href="?vrange=2,12&ops=div&goal=36">2-12</a> 
+      </li>
+    </ul>
   </div>
   
   <div id="params">
