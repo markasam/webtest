@@ -167,7 +167,7 @@
       var stats = document.getElementById('stats');
 
       if (incorrectCount != 0 && !incorrectCount) {
-        stats.innerHTML = `0/${problemCountGoal}`;
+        stats.innerHTML = "\u00A0"; //`0/${problemCountGoal}`;
         return;
       }
 
@@ -307,8 +307,8 @@
         font-size: 200%;
       }
 
-      #settingsInfo {
-        font-size: 115%;
+      #stats, #settingsInfo {
+        font-size: 125%;
       }
 
       #startButton {
