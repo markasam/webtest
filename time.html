@@ -27,6 +27,11 @@
     const defaultOps = "x"; // "+-x/";
     const defaultGoal = 36;
 
+    const addChar  = "\u002B";
+    const subChar  = "\u2212";
+    const multChar = "\u00D7";
+    const divChar  = "\u00F7";
+
     var minValue = defaultMin;
     var maxValue = defaultMax;
     var operators = defaultOps; 
@@ -65,6 +70,11 @@
         var newQStr = searchParams.toString();
         if(history.replaceState) {
             window.history.replaceState(null, null, `?${newQStr}`);
+        }
+      });
+      document.getElementById("inputGoal").addEventListener('keydown', event => {
+        if (event.key === "Enter") {
+          menuReload();
         }
       });
       document.getElementById("inputGoal").addEventListener('focus', e =>{
@@ -140,12 +150,14 @@
       var parts = [];
 
       //Order like this: ( add sub mult div 2-12 ) 
+      // new: ( #36 | add sub mult div | -12 to 12 )
       parts.push("(");
-      if (operators.includes("+")) parts.push("add");
-      if (operators.includes("-")) parts.push("sub");
-      if (operators.includes("x")) parts.push("mult");
-      if (operators.includes("/")) parts.push("div");
-      parts.push(`${minValue}-${maxValue}`);
+      parts.push(`#${problemCountGoal} |`);
+      if (operators.includes("+")) parts.push(addChar);
+      if (operators.includes("-")) parts.push(subChar);
+      if (operators.includes("x")) parts.push(multChar);
+      if (operators.includes("/")) parts.push(divChar);
+      parts.push(`| ${minValue} to ${maxValue}`);
       parts.push(")");
 
       return parts.join(" ");
@@ -213,8 +225,12 @@
       incorrectFlag = false;
 
       var newProblemText, lv, rv, op;
+      var limit = 30;
 
       do {
+
+        if (limit-- <= 0) break;
+
         var lv = getRandomInt(maxValue-minValue+1) + minValue;
         var rv = getRandomInt(maxValue-minValue+1) + minValue;
         var op = operators[getRandomInt(operators.length)];
@@ -225,14 +241,26 @@
           lv = lv + rv;
         }
 
-        newProblemText = `${lv} ${op} ${rv}`;
-      } while (problem.innerHTML === newProblemText);
+        newProblemText = `${lv} ${operatorToChar(op)} ${rv}`;
+      } while (problem.innerHTML === newProblemText || (op === "/" && rv == 0));
 
       problem.innerHTML = newProblemText;
       answerText = `${getAnswer(op, lv, rv)}`;
 
       input.value = "";
       input.focus();
+    }
+
+    function operatorToChar(op) {
+      switch (op) {
+        case '+': return addChar;
+        case '-': return subChar;
+        case 'x': return multChar;
+        case '/': return divChar;
+        default:
+          console.log(`Unkown operator: ${op}.`);
+          return "?";
+      }
     }
 
     function getAnswer(op, lv, rv) {
@@ -335,8 +363,8 @@
       #links {
         display:table;
         margin-top: 2em;
-        margin-left: auto;
-        margin-right: auto;
+        margin-left: 7px;
+        margin-right: 7px;
         font-size: 115%;
       }
 
