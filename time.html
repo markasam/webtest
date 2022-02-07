@@ -111,8 +111,8 @@
 
       var vrange = searchParams.get("vrange") || `${defaultMin},${defaultMax}`;
       var vrParts = vrange.split(",");
-      minValue = parseInt(vrParts[0]) || defaultMin;
-      maxValue = parseInt(vrParts[1]) || defaultMax;
+      minValue = parseInt(vrParts[0]); if (isNaN(minValue)) minValue = defaultMin;
+      maxValue = parseInt(vrParts[1]); if (isNaN(maxValue)) minValue = defaultMax;
       var ops = searchParams.get("ops"); // "add,mult,sub,div";
       operators = "";
       if (ops) {
