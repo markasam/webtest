@@ -344,12 +344,12 @@
       tdTime.textContent = item.isCompleate ? `${item.time}s` : 'x';
       row.appendChild(tdTime);
 
-      if (item.isCompleate) {
+      // if (item.isCompleate) {
         var tdIncorrect = document.createElement('td');
         tdIncorrect.setAttribute('class', 'tdHistoryIncorrect');
         tdIncorrect.textContent = item.incorrectCount > 0 ? `-${item.incorrectCount}` : '';
         row.appendChild(tdIncorrect);
-      }
+      // }
 
       return row;
     }
