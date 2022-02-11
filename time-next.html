@@ -116,6 +116,10 @@
       } else {
         document.getElementById('startButton').focus();
       }
+
+      if (window.location.hash === "#debug") {
+        document.getElementById('debugDiv').style.display = "block";
+      }
     }
 
     function setParamsFromURL() {
@@ -291,6 +295,7 @@
 
 
     var scoreHistory = [];
+    const scoreHistoryMaxLength = 1000;
     const lsHistoryKey = 'flashmath.time-next.html.history';
 
     function isSameDay(d0, d1) {
@@ -408,11 +413,14 @@
       storeScoreHistory();
     }
     function storeScoreHistory() {
+      if (scoreHistory.length > scoreHistoryMaxLength) {
+        scoreHistory = scoreHistory.slice(-scoreHistoryMaxLength);
+      }
       window.localStorage.setItem(lsHistoryKey, JSON.stringify(scoreHistory));
     }
 
      function test_saveRandomScores() {
-      for (var i = 0; i < 10000; ++i) {
+      for (var i = 0; i < 1000; ++i) {
         scoreHistory.push({
           date: Date.now(),
           count: problemCountGoal,
@@ -569,6 +577,10 @@
         padding-left: 8px;
       }
 
+      #debugDiv {
+        display: none;
+      }
+
     </style>
 </head>
 
@@ -677,8 +689,9 @@
   </div>
 
 
+<div id="debugDiv">
   <button onclick="test_saveRandomScores();">Gen Test Data</button>
-
+</div>
 
 </body>
 
