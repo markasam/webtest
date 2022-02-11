@@ -102,7 +102,8 @@
         document.getElementById('menue').style.display = "none";
         input.focus();
       };
-      var links = Array.prototype.slice.call(document.getElementsByTagName('a'));
+
+      var links = Array.prototype.slice.call(document.getElementById('settingsLinks').getElementsByTagName('a'));
       for(var i = 0; i < links.length; i++) {
         links[i].addEventListener('click', menuLinkClick);
       }
@@ -115,6 +116,10 @@
         document.getElementById('menueOpen').onclick();
       } else {
         document.getElementById('startButton').focus();
+      }
+
+      if (window.location.hash === "#debug") {
+        document.getElementById('debugDiv').style.display = "block";
       }
     }
 
@@ -291,6 +296,7 @@
 
 
     var scoreHistory = [];
+    const scoreHistoryMaxLength = 1000;
     const lsHistoryKey = 'flashmath.time-next.html.history';
 
     function isSameDay(d0, d1) {
@@ -346,13 +352,17 @@
       return row;
     }
 
-    function loadScoreHistory() {
+    function loadScoreHistory(limit=50) {
       const scorsStr = window.localStorage.getItem(lsHistoryKey);
       if (scorsStr) {
         scoreHistory = JSON.parse(scorsStr);
       }
 
-      var limit = 50;
+      document.getElementById('historyHeader').style.display = 
+        scoreHistory.length > 0 ? "block" : "none";
+
+      document.getElementById('historyShowAllLink').style.display = 
+        scoreHistory.length > limit ? "block" : "none";
 
       var lastSettingsStr = "";
       var table = document.getElementById('historyTable');
@@ -370,6 +380,13 @@
           break;
       }
     }
+
+    function showAllHistory() {
+      loadScoreHistory(scoreHistoryMaxLength);
+      return false;
+    }
+
+
 
     function updateScore(seconds) {
       const item = {
@@ -403,10 +420,27 @@
       storeScoreHistory();
     }
     function storeScoreHistory() {
+      if (scoreHistory.length > scoreHistoryMaxLength) {
+        scoreHistory = scoreHistory.slice(-scoreHistoryMaxLength);
+      }
       window.localStorage.setItem(lsHistoryKey, JSON.stringify(scoreHistory));
     }
 
- 
+     function test_saveRandomScores() {
+      for (var i = 0; i < 1000; ++i) {
+        scoreHistory.push({
+          date: Date.now(),
+          count: problemCountGoal,
+          ops: operators,
+          minValue: minValue,
+          maxValue: maxValue,
+          incorrectCount: incorrectCount,
+          time: getRandomInt(255),
+          isCompleate: true
+        });
+      }
+      storeScoreHistory();
+    }
 
   </script>
 
@@ -534,8 +568,11 @@
 /*      #historyDiv {
          display: table;
          margin: 0 auto;
+      }*/
+      #historyHeader {
+        display: none;
       }
-*/
+
       .tdHistorySettingsHeader {
         padding-top: 5px;
       }
@@ -545,6 +582,10 @@
       }
       .tdHistoryTime {
         padding-left: 8px;
+      }
+
+      #debugDiv {
+        display: none;
       }
 
     </style>
@@ -576,7 +617,7 @@
   </div>
 
   <div id="links">
-    <ul>
+    <ul id="settingsLinks">
       <li>
         Problems: <input id="inputGoal" type="number" min="1" style="1" inputmode="numeric" pattern="\d*" />
         <button id="menuReload" onclick="menuReload();">Reload</button>
@@ -615,12 +656,14 @@
     </ul>
 
     <div id="historyDiv"  >
-      <h4>History</h4>
+      <h4 id="historyHeader">History</h4>
       <table id="historyTable" >
-      </table> 
+      </table>
+      <a id="historyShowAllLink" href="" onclick="return showAllHistory();">Show all</a>
     </div>
 
   </div>
+
 
 <!--     <table>
       <tr>
@@ -654,7 +697,9 @@
   </div>
 
 
-
+<div id="debugDiv">
+  <button onclick="test_saveRandomScores();">Gen Test Data</button>
+</div>
 
 </body>
 
