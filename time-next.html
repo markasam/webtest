@@ -352,6 +352,9 @@
         scoreHistory = JSON.parse(scorsStr);
       }
 
+      document.getElementById('historyHeader').style.display = 
+        scoreHistory.length > 0 ? "block" : "none";
+
       var limit = 50;
 
       var lastSettingsStr = "";
@@ -370,6 +373,8 @@
           break;
       }
     }
+
+
 
     function updateScore(seconds) {
       const item = {
@@ -406,7 +411,21 @@
       window.localStorage.setItem(lsHistoryKey, JSON.stringify(scoreHistory));
     }
 
- 
+     function test_saveRandomScores() {
+      for (var i = 0; i < 10000; ++i) {
+        scoreHistory.push({
+          date: Date.now(),
+          count: problemCountGoal,
+          ops: operators,
+          minValue: minValue,
+          maxValue: maxValue,
+          incorrectCount: incorrectCount,
+          time: getRandomInt(255),
+          isCompleate: true
+        });
+      }
+      storeScoreHistory();
+    }
 
   </script>
 
@@ -534,8 +553,11 @@
 /*      #historyDiv {
          display: table;
          margin: 0 auto;
+      }*/
+      #historyHeader {
+        display: none;
       }
-*/
+
       .tdHistorySettingsHeader {
         padding-top: 5px;
       }
@@ -615,12 +637,13 @@
     </ul>
 
     <div id="historyDiv"  >
-      <h4>History</h4>
+      <h4 id="historyHeader">History</h4>
       <table id="historyTable" >
       </table> 
     </div>
 
   </div>
+
 
 <!--     <table>
       <tr>
@@ -654,6 +677,7 @@
   </div>
 
 
+  <button onclick="test_saveRandomScores();">Gen Test Data</button>
 
 
 </body>
