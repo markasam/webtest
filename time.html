@@ -91,9 +91,11 @@
         incorrectCount = correctCount = endTime = 0;
         startTime = Date.now();
         updateStats();
+        addNewScore();
       };
 
       document.getElementById('menueOpen').onclick = function() {
+        loadScoreHistory();
         document.getElementById('menue').style.display = "block";
       };
       document.getElementById('menueClose').onclick = function() {
@@ -107,6 +109,7 @@
 
       setParamsFromURL();
       updateStats();
+      loadScoreHistory();
 
       if (!window.location.search) {
         document.getElementById('menueOpen').onclick();
@@ -144,21 +147,20 @@
       problemCountGoal = searchParams.get("goal") || defaultGoal;
 
       document.getElementById('inputGoal').value = problemCountGoal;
-      document.getElementById('settingsInfo').innerHTML = getParamsInfoString();
+      document.getElementById('settingsInfo').innerHTML = 
+        `( ${getParamsInfoString()} )`;
     }
-    function getParamsInfoString() {
+    function getParamsInfoString(goal=problemCountGoal, ops=operators, min=minValue, max=maxValue) {
       var parts = [];
 
       //Order like this: ( add sub mult div 2-12 ) 
       // new: ( #36 | add sub mult div | -12 to 12 )
-      parts.push("(");
-      parts.push(`#${problemCountGoal} |`);
-      if (operators.includes("+")) parts.push(addChar);
-      if (operators.includes("-")) parts.push(subChar);
-      if (operators.includes("x")) parts.push(multChar);
-      if (operators.includes("/")) parts.push(divChar);
-      parts.push(`| ${minValue} to ${maxValue}`);
-      parts.push(")");
+      parts.push(`#${goal} |`);
+      if (ops.includes("+")) parts.push(addChar);
+      if (ops.includes("-")) parts.push(subChar);
+      if (ops.includes("x")) parts.push(multChar);
+      if (ops.includes("/")) parts.push(divChar);
+      parts.push(`| ${min} to ${max}`);
 
       return parts.join(" ");
     }
@@ -184,10 +186,13 @@
 
         if (correctCount >= problemCountGoal) {
           endTime = Date.now();
-          problem.innerHTML = `Finished in ${Math.round((endTime-startTime)/1000)}s`;
+          var seconds = Math.round((endTime-startTime)/1000);
+          problem.innerHTML = `Finished in ${seconds}s`;
 
         document.getElementById('buttonDiv').style.display = "block";
         document.getElementById('answerDiv').style.display = "none";
+
+        updateScore(seconds);
 
         document.getElementById('startButton').focus();
 
@@ -285,7 +290,123 @@
     }
 
 
+    var scoreHistory = [];
+    const lsHistoryKey = 'flashmath.time-next.html.history';
 
+    function isSameDay(d0, d1) {
+      return d0.getFullYear() === d1.getFullYear() &&
+      d0.getMonth() === d1.getMonth() &&
+      d0.getDate() === d1.getDate();
+    }
+
+    function formatDateTime(date) {
+      var hours = date.getHours();
+      var mins = date.getMinutes();
+      var timeStr = `${hours<10?'0':''}${hours}:${mins<10?'0':''}${mins}`;
+
+      if (isSameDay(date, new Date())) {
+        return timeStr;
+      } else {
+        return `${date.toLocaleDateString()} ${timeStr}`;
+      }
+
+    }
+
+    function settingStrToElement(paramsInfoString) {
+      var row = document.createElement('tr');
+      var tdParams = document.createElement('td');
+      tdParams.setAttribute('colspan', '3');
+      tdParams.setAttribute('class', 'tdHistorySettingsHeader');
+      tdParams.textContent = paramsInfoString;
+      row.appendChild(tdParams);
+      return row;
+    }
+
+    function scoreHistItemToElement(item) {
+      var row = document.createElement('tr');
+      
+      var tdDate = document.createElement('td');
+      tdDate.setAttribute('class', 'tdHistoryDate');
+      tdDate.textContent = formatDateTime(new Date(item.date));
+      row.appendChild(tdDate);
+
+      
+      var tdTime = document.createElement('td');
+      tdTime.setAttribute('class', 'tdHistoryTime');
+      tdTime.textContent = item.isCompleate ? `${item.time}s` : 'x';
+      row.appendChild(tdTime);
+
+      if (item.isCompleate) {
+        var tdIncorrect = document.createElement('td');
+        tdIncorrect.setAttribute('class', 'tdHistoryIncorrect');
+        tdIncorrect.textContent = item.incorrectCount > 0 ? `-${item.incorrectCount}` : '';
+        row.appendChild(tdIncorrect);
+      }
+
+      return row;
+    }
+
+    function loadScoreHistory() {
+      const scorsStr = window.localStorage.getItem(lsHistoryKey);
+      if (scorsStr) {
+        scoreHistory = JSON.parse(scorsStr);
+      }
+
+      var limit = 50;
+
+      var lastSettingsStr = "";
+      var table = document.getElementById('historyTable');
+      table.innerHTML = '';
+      for (var i = scoreHistory.length - 1; i >= 0; --i) {
+        var item = scoreHistory[i];
+        var curSettingsStr = getParamsInfoString(item.count, item.ops, item.minValue, item.maxValue)
+        if (lastSettingsStr !== curSettingsStr) {
+          lastSettingsStr = curSettingsStr;
+          table.appendChild(settingStrToElement(curSettingsStr));
+        }
+        table.appendChild(scoreHistItemToElement(item));
+
+        if (--limit <= 0)
+          break;
+      }
+    }
+
+    function updateScore(seconds) {
+      const item = {
+        date: Date.now(),
+        count: problemCountGoal,
+        ops: operators,
+        minValue: minValue,
+        maxValue: maxValue,
+        incorrectCount: incorrectCount,
+        time: seconds,
+        isCompleate: true
+      }
+      scoreHistory[scoreHistory.length - 1] = item;
+      storeScoreHistory();
+    }
+
+    function addNewScore() {
+      const item = {
+        date: Date.now(),
+        count: problemCountGoal,
+        ops: operators,
+        minValue: minValue,
+        maxValue: maxValue,
+        //incorrectCount: incorrectCount,
+        //time: seconds,
+        isCompleate: false
+      }
+      scoreHistory.push(item);
+      // var table = document.getElementById('historyTable');
+      // table.prepend(scoreHistItemToElement(item));
+      storeScoreHistory();
+    }
+    function storeScoreHistory() {
+      window.localStorage.setItem(lsHistoryKey, JSON.stringify(scoreHistory));
+    }
+
+ 
 
   </script>
 
@@ -410,6 +531,21 @@
         content: '\2716';
       }
 
+/*      #historyDiv {
+         display: table;
+         margin: 0 auto;
+      }
+*/
+      .tdHistorySettingsHeader {
+        padding-top: 5px;
+      }
+      .tdHistoryDate {
+        color: darkgray;
+       padding-left: 7px; 
+      }
+      .tdHistoryTime {
+        padding-left: 8px;
+      }
 
     </style>
 </head>
@@ -477,6 +613,13 @@
         <a href="?vrange=2,12&ops=mult,div&goal=36">2-12</a>  
       </li>
     </ul>
+
+    <div id="historyDiv"  >
+      <h4>History</h4>
+      <table id="historyTable" >
+      </table> 
+    </div>
+
   </div>
 
 <!--     <table>
@@ -509,6 +652,9 @@
 
 
   </div>
+
+
+
 
 </body>
 
