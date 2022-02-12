@@ -3,15 +3,18 @@
 
 <head>
   <title>Flash Math</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
   <script>
     'use strict';
 
-    // status  [13/39 | m Incorrect]
+    // stats  [13/39 | m Incorrect]
     var incorrectCount;
     var correctCount;
     var problemCountGoal;
     var startTime;
+    var endTime;
+    //var problemCountGoalNext = null;
 
     // elements
     var answerInput; 
@@ -19,15 +22,16 @@
     var problem;
     var inputCount;
 
+
     var answerText; // answer to current problem
+
 
     // problem paramiters
     const defaultMin = 2;
     const defaultMax = 9;
-    const defaultOps = "x";
+    const defaultOps = "x"; // "+-x/";
     const defaultGoal = 36;
 
-    // Unicode math operator chars
     const addChar  = "\u002B";
     const subChar  = "\u2212";
     const multChar = "\u00D7";
@@ -45,7 +49,7 @@
       searchParams.set("goal", goal);
       window.location.href = `?${searchParams.toString()}`;
     }
-    function menuReloadButton() {
+    function menuReload() {
       if (!window.location.search) {
         window.location.href = `?goal=${inputCount.value}`;
       } else {
@@ -79,7 +83,7 @@
       });
       inputCount.addEventListener('keydown', event => {
         if (event.key === "Enter") {
-          menuReloadButton();
+          menuReload();
         }
       });
       inputCount.addEventListener('focus', e =>{
@@ -93,9 +97,9 @@
         setParamsFromURL();
         newProblem();       
 
-        incorrectCount = correctCount = 0;
+        incorrectCount = correctCount = endTime = 0;
         startTime = Date.now();
-        updateStatus();
+        updateStats();
         addNewScore();
       };
 
@@ -119,7 +123,7 @@
       }
 
       setParamsFromURL();
-      updateStatus();
+      updateStats();
       loadScoreHistory();
      
       var showMenue = !window.location.search;
@@ -168,7 +172,7 @@
       problemCountGoal = searchParams.get("goal") || defaultGoal;
 
       document.getElementById('inputCount').value = problemCountGoal;
-      document.getElementById('settingsInfo').textContent = 
+      document.getElementById('settingsInfo').innerHTML = 
         `( ${getParamsInfoString()} )`;
     }
     function getParamsInfoString(goal=problemCountGoal, ops=operators, min=minValue, max=maxValue) {
@@ -186,16 +190,16 @@
       return parts.join(" ");
     }
 
-    function updateStatus() {
-      var status = document.getElementById('status');
+    function updateStats() {
+      var stats = document.getElementById('stats');
 
       if (incorrectCount != 0 && !incorrectCount) {
-        status.textContent = "\u00A0"; //`0/${problemCountGoal}`;
+        stats.innerHTML = "\u00A0"; //`0/${problemCountGoal}`;
         return;
       }
 
-      // status  [13/39 | Incorrect: n ]
-      status.textContent = `${correctCount}/${problemCountGoal} | Incorrect: ${incorrectCount}`;
+      // stats  [13/39 | Incorrect: n ]
+      stats.innerHTML = `${correctCount}/${problemCountGoal} | Incorrect: ${incorrectCount}`;
     }
 
     function anwserInputChanged() {
@@ -203,18 +207,19 @@
       if (answerInput.value === answerText) {
 
         ++correctCount;
-        updateStatus();
+        updateStats();
 
         if (correctCount >= problemCountGoal) {
-          var seconds = Math.round((Date.now() - startTime) / 1000);
-          problem.textContent = `Finished in ${seconds}s`;
+          endTime = Date.now();
+          var seconds = Math.round((endTime-startTime)/1000);
+          problem.innerHTML = `Finished in ${seconds}s`;
 
-          document.getElementById('buttonDiv').style.display = "block";
-          document.getElementById('answerDiv').style.display = "none";
+        document.getElementById('buttonDiv').style.display = "block";
+        document.getElementById('answerDiv').style.display = "none";
 
-          updateScore(seconds);
+        updateScore(seconds);
 
-          startButton.focus();
+        startButton.focus();
 
         } else {
           newProblem();
@@ -225,7 +230,7 @@
         if (!incorrectFlag) {
           incorrectFlag = true;
           ++incorrectCount;
-          updateStatus();
+          updateStats();
         }
         
         answerInput.setCustomValidity("Invalid field.");
@@ -267,9 +272,9 @@
         }
 
         newProblemText = `${lv} ${operatorToChar(op)} ${rv}`;
-      } while (problem.textContent === newProblemText || (op === "/" && rv == 0));
+      } while (problem.innerHTML === newProblemText || (op === "/" && rv == 0));
 
-      problem.textContent = newProblemText;
+      problem.innerHTML = newProblemText;
       answerText = `${getAnswer(op, lv, rv)}`;
 
       answerInput.value = "";
@@ -381,7 +386,7 @@
 
       var lastSettingsStr = "";
       var table = document.getElementById('historyTable');
-      table.textContent = '';
+      table.innerHTML = '';
       for (var i = scoreHistory.length - 1; i >= 0; --i) {
         var item = scoreHistory[i];
         var curSettingsStr = getParamsInfoString(item.count, item.ops, item.minValue, item.maxValue)
@@ -464,31 +469,26 @@
 
   <style>
 
-    body {
-      /* font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif */
-      font-family: Arial, Helvetica, sans-serif;
-    }
-
       #problem {
         margin-top: 1.3em;
         margin-bottom: 1.3em;
         vertical-align: middle;
         text-align: center;
-        font-size: 2.5rem;
+        font-size: 250%
       }
 
       #answerInput {
         text-align: center;
         width: 5em;
-        font-size: 2rem;
+        font-size: 200%;
       }
 
       #settingsInfo {
-        font-size: 1.30rem;
+        font-size: 125%;
       }
 
       #startButton {
-        font-size: 2.5rem;
+        font-size: 250%;
         padding: 0.2em 1em 0.2em 1em;
       }
 
@@ -525,7 +525,7 @@
 
       #menue {
         width: 100%;
-        min-height: 100%;
+        height: 100%;
         position: absolute;
         top: 0;
         left: 0;
@@ -535,7 +535,7 @@
 
 
       #menueHeader {
-        margin: 0.5em; 
+        margin: 8px;
       }
 
 
@@ -545,7 +545,7 @@
         margin-top: 2em;
         margin-left: auto;
         margin-right: auto;
-        font-size: 1.25rem;
+        font-size: 115%;
       }
 
       
@@ -563,10 +563,10 @@
         text-align: center;
         margin: 0em 0.25em 0em 0.25em ;
         width: 3em;
-        font-size: inherit;
+        font-size: 105%;
       }
-      #menuReloadButton {
-        font-size: inherit;
+      #menuReload {
+        font-size: 105%;
       }
 
 
@@ -578,14 +578,14 @@
         color: black;
       }
 
-      #status {
-        padding: 0 0.5em;
-        font-size: 1.25rem;
+      #stats {
+        padding: 0 6px;
+        font-size: 125%;
       }
 
       #menueOpen, #menueClose {
         padding: 0 0.25em;
-        font-size: 1.4rem;
+        font-size: 140%;
       }
 
       #menueOpen:after {
@@ -595,26 +595,24 @@
         content: '\2716';
       }
 
-      #historyDiv {
-        margin: 1em 0;
-      }
-
+/*      #historyDiv {
+         display: table;
+         margin: 0 auto;
+      }*/
       #historyHeader {
         display: none;
-        font-weight: bold;
-        margin-bottom: 0.25em;
       }
 
       .tdHistorySettingsHeader {
-        padding-top: 0.3em;
+        padding-top: 5px;
         white-space: nowrap;
       }
       .tdHistoryDate {
         color: darkgray;
-       padding-left: 0.4em; 
+       padding-left: 7px; 
       }
       .tdHistoryTime {
-        padding-left: 0.58em;
+        padding-left: 8px;
       }
 
       #debugDiv {
@@ -628,7 +626,7 @@
 
   <div id="mainContent">
     <div id="header">
-      <span id="status"></span>
+      <span id="stats"></span>
       <span id="menueOpen" style="float: right;"></span>
     </div>
     <p id="problem"></p>
@@ -658,7 +656,7 @@
       <ul id="settingsLinks">
         <li>
           Problems: <input id="inputCount" type="number" min="1" inputmode="numeric" pattern="\d*" />
-          <button id="menuReloadButton" onclick="menuReloadButton();">Reload</button>
+          <button id="menuReload" onclick="menuReload();">Reload</button>
         </li>
         <li>Addition:
           <a href="?vrange=2,12&ops=add&goal=36">2-12</a> |
@@ -694,7 +692,7 @@
       </ul>
   
       <div id="historyDiv">
-        <span id="historyHeader">History</span>
+        <h4 id="historyHeader">History</h4>
         <table id="historyTable">
         </table>
         <a id="historyShowAllLink" href="" onclick="return showAllHistory();">Show all</a>
