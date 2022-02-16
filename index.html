@@ -1,142 +1,42 @@
+<!DOCTYPE html>
 <html>
 
 <head>
-  <title>Flash Math</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Web Test</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
 
   <script>
     'use strict';
-
-    var input; 
-    var problem;
-    var answerText;
-
     function onLoad() {
 
-      problem = document.getElementById("problem");
-      input = document.getElementById('answerInput');
-      input.addEventListener('input', updateValue);
-      input.addEventListener("keydown", onKey);
-
-      document.getElementById('startButton').onclick = function() {
-        document.getElementById('answerDiv').style.display = "block";
-        newProblem();
-      };
     }
-
-    function updateValue(e) {
-      
-      if (e.target.value === answerText) {
-        newProblem();
-      }
-    }
-
-    function onKey(event) {
-      if (event.key === "Enter") {
-        input.value = "";
-        values.innerHTML = "";
-      }
-    }
-
-    // Ideas:
-    // - Equal/balanced number of operator types, numbers
-    // - Present problems in seqence, automaticly moving on when correct answer is input
-
-    // flshcard: how many in 2 min; url encodes parameters (oprand rang and operators)
-
-    function newProblem() {
-
-      var minValue = 2;
-      var maxValue = 9;
-      var operators = "+x"; //"+-x/";
-
-      var newProblemText, lv, rv, op;
-
-      do {
-        var lv = getRandomInt(maxValue-minValue+1) + minValue;
-        var rv = getRandomInt(maxValue-minValue+1) + minValue;
-        var op = operators[getRandomInt(operators.length)];
-
-        newProblemText = `${lv} ${op} ${rv}`;
-      } while (problem.innerHTML === newProblemText);
-
-      problem.innerHTML = newProblemText;
-      answerText = getAnswerText(op, lv, rv);
-
-      input.value = "";
-      input.focus();
-
-    }
-
-    function getAnswerText(op, lv, rv) {
-      switch (op) {
-        case '+':
-          return `${lv + rv}`;
-        case '-':
-          return `${lv - rv}`;
-        case 'x':
-        case '*':
-          return `${lv * rv}`;
-        case '/':
-          return `${lv / rv}`;
-        default:
-          console.log(`Unkown operator: ${op}.`);
-          return null;
-      }
-    }
-
-    function getRandomInt(max) {
-      return Math.floor(Math.random() * max);
-    }
-
   </script>
 
   <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 1.3em;
+    }
 
-      #problem {
-        margin: 1.5em;
-        vertical-align: middle;
-        text-align: center;
-        font-size: 250%
-      }
+    a:link {
+      color: black;
+    }
 
-      #answerInput {
-        text-align: center;
-        width: 5em;
-        font-size: 200%;
-      }
+    a:visited {
+      color: black;
+    }
+  </style>
 
-      button {
-        font-size: 100%;
-        padding: 0.25em;
-      }
-
-      #answerDiv {
-        text-align: center;
-        display: none;
-      }
-
-      input::-webkit-outer-spin-button,
-      input::-webkit-inner-spin-button {
-          -webkit-appearance: none;
-          margin: 0; 
-      }
-
-      input[type=number] {
-          -moz-appearance:textfield; /* Firefox */
-      }
-
-
-    </style>
 </head>
 
 <body onload="onLoad();">
 
-  <p id="problem"><button id="startButton">Start</button></p>
-  <div id="answerDiv">
-    <input id="answerInput" placeholder="Answer" type="number" inputmode="numeric" pattern="\d*" />
-  </div>
-  
+  <ul id="links">
+    <li>
+      <a href="time.html">Flash Math</a>
+    </li>
+
+  </ul>
 
 </body>
 
