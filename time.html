@@ -127,6 +127,20 @@
       searchParams.set("xdp", xdp);
       window.location.href = `?${searchParams.toString()}`;
     }
+    function menueChange(e) {
+      var count = inputCount.value;
+      var st = document.querySelector('#menueContent input[name="sType"]:checked').value;
+      var xdp = document.getElementById('chkExcludeDups').checked;
+
+      var searchParams = new URLSearchParams(window.location.search);
+      searchParams.set("count", count);
+      searchParams.set("stype", st);
+      searchParams.set("xdp", xdp);
+      var newQStr = searchParams.toString();
+      if(history.replaceState) {
+          window.history.replaceState(null, null, `?${newQStr}`);
+      }
+    }
     function menuReloadButton() {
       if (!window.location.search) {
         window.location.href = `?count=${inputCount.value}`;
@@ -155,20 +169,8 @@
       });
 
       inputCount = document.getElementById("inputCount");
-      document.getElementById("menue").addEventListener('change', function(e) {
-        var count = inputCount.value;
-        var st = document.querySelector('#menueContent input[name="sType"]:checked').value;
-        var xdp = document.getElementById('chkExcludeDups').checked;
-
-        var searchParams = new URLSearchParams(window.location.search);
-        searchParams.set("count", count);
-        searchParams.set("stype", st);
-        searchParams.set("xdp", xdp);
-        var newQStr = searchParams.toString();
-        if(history.replaceState) {
-            window.history.replaceState(null, null, `?${newQStr}`);
-        }
-      });
+      inputCount.addEventListener('input', menueChange);
+      document.getElementById("menue").addEventListener('change', menueChange);
 
       inputCount.addEventListener('keydown', event => {
         if (event.key === "Enter") {
@@ -835,8 +837,8 @@
       </div>
     
       <div id="answerDiv">
-        <!-- <input id="answerInput" placeholder="Answer" type="number" inputmode="numeric" pattern="\d*" /> -->
-        <input id="answerInput" placeholder="Answer" type="tel" inputmode="numeric" pattern="\d*" />
+        <!-- <input id="answerInput" placeholder="Answer" type="number" inputmode="numeric" pattern="\d*" autocomplete="off" /> -->
+        <input id="answerInput" placeholder="Answer" type="tel" inputmode="numeric" pattern="\d*" autocomplete="off" />
       </div>
     
       <div id="debugDiv">
@@ -865,7 +867,7 @@
             <input type="checkbox" id="chkExcludeDups" name="sTypeExcludeDups">
             <label for="chkExcludeDups">
               Unique <br>
-              <span style="color: darkgray; font-size: 80%;">
+              <span style="color: rgb(128, 128, 128); font-size: 80%;">
                 Excludes duplicate pairs for + &times;
               </span>
             </label>
@@ -873,7 +875,7 @@
           <div>
             <input type="radio" id="rbCount" name="sType" value="count">
             <label for="rbCount">Custom Count:</label>
-            <input id="inputCount" type="number" min="1" inputmode="numeric" pattern="\d*" />
+            <input id="inputCount" type="number" min="1" inputmode="numeric" pattern="\d*" autocomplete="off" />
           </div>
           <!-- <div style="text-align: right; padding-right: 3em;"> -->
           <div>
