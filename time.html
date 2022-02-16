@@ -7,14 +7,79 @@
   <script>
     'use strict';
 
-    // status  [13/39 | m Incorrect]
+    var state = -1;
+    const StateReady = 0;
+    const StateRunning = 1;
+    const StateFinished = 2;
+    const StateCount = 3;
+    const StateText = ["Ready", "Running", "Finished" ];
+    
+
+    const SetTypeAll = 'all';
+    const SetTypeUnique = 'unique';
+    const SetTypeCount = 'count';
+
+
+    function nextState() {
+      setState((state + 1) % StateCount);
+    }
+    function setState(newState) {
+      state = newState;
+      switch (newState) {
+        case StateReady:
+          {
+            setParamsFromURL();
+            incorrectCount = correctCount = 0;
+            updateStatus();
+            problem.textContent = "";
+            document.getElementById('answerDiv').style.display = "none";
+            document.getElementById('buttonDiv').style.display = "block";
+            document.getElementById('mainContent').style.display ='block';
+            startButton.focus();
+          }
+          break;
+        case StateRunning:
+          {
+            document.getElementById('buttonDiv').style.display = "none";
+            document.getElementById('answerDiv').style.display = "block";
+            
+            setParamsFromURL();
+            cards = getCards();
+            problemCount = cards.length;
+            
+            incorrectCount = correctCount = 0;
+            nextProblem();     
+            
+            startTime = Date.now();
+            updateStatus();
+            addNewScore();
+          }
+          break;
+        case StateFinished:
+          {
+            var seconds = Math.round((Date.now() - startTime) / 1000);
+            problem.textContent = `Finished in ${seconds}s`;
+
+            document.getElementById('buttonDiv').style.display = "";
+            document.getElementById('answerDiv').style.display = "none";
+
+            updateScore(seconds);
+            startButton.focus();
+          }
+          break;
+        default:
+          throw 'Unknown state';
+      }
+      
+    }
+
+    // status
     var incorrectCount;
     var correctCount;
-    var problemCountGoal;
     var startTime;
 
     // elements
-    var answerInput; 
+    var answerInput;
     var startButton;
     var problem;
     var inputCount;
@@ -25,7 +90,8 @@
     const defaultMin = 2;
     const defaultMax = 9;
     const defaultOps = "x";
-    const defaultGoal = 36;
+    const defaultCount = 36;
+    const defaultSetType = SetTypeCount;
 
     // Unicode math operator chars
     const addChar  = "\u002B";
@@ -35,19 +101,26 @@
 
     var minValue = defaultMin;
     var maxValue = defaultMax;
-    var operators = defaultOps; 
+    var operators = defaultOps;
+    var problemCount = defaultCount;
+    var setType = defaultSetType;
+    
 
     function menuLinkClick(e) {
+
+      var st = document.querySelector('#menueContent input[name="sType"]:checked').value;
+
       e.preventDefault();
-      var goal = inputCount.value;
+      var count = inputCount.value;
       var href = e.target.getAttribute("href");
       var searchParams = new URLSearchParams(href);
-      searchParams.set("goal", goal);
+      searchParams.set("count", count);
+      searchParams.set("stype", st);
       window.location.href = `?${searchParams.toString()}`;
     }
     function menuReloadButton() {
       if (!window.location.search) {
-        window.location.href = `?goal=${inputCount.value}`;
+        window.location.href = `?count=${inputCount.value}`;
       } else {
         window.location.reload();
       }
@@ -62,16 +135,21 @@
 
       answerInput = document.getElementById('answerInput');
       answerInput.addEventListener('input', anwserInputChanged);
-      answerInput.addEventListener("keydown", onKey);
+      answerInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          answerInput.value = "";
+          anwserInputChanged();
+        }
+      });
       answerInput.addEventListener('focus', (event) => {
         window.scrollTo(0, 0);
       });
 
       inputCount = document.getElementById("inputCount");
       inputCount.addEventListener('input', e => {
-        var goal = inputCount.value;
+        var count = inputCount.value;
         var searchParams = new URLSearchParams(window.location.search);
-        searchParams.set("goal", goal);
+        searchParams.set("count", count);
         var newQStr = searchParams.toString();
         if(history.replaceState) {
             window.history.replaceState(null, null, `?${newQStr}`);
@@ -86,30 +164,24 @@
         e.target.select();
       });
 
-      startButton.onclick = function() {
-        document.getElementById('buttonDiv').style.display = "none";
-        document.getElementById('answerDiv').style.display = "block";
-        
-        setParamsFromURL();
-        newProblem();       
 
-        incorrectCount = correctCount = 0;
-        startTime = Date.now();
-        updateStatus();
-        addNewScore();
+      startButton.onclick = function() {
+        setState(StateRunning);
       };
 
       document.getElementById('menueOpen').onclick = function() {
-        loadScoreHistory();
+        renderScoreHistory();
+        document.querySelector(`#menueContent input[value="${setType}"]`).checked = true;
         document.getElementById('menue').style.display = "block";
       };
       document.getElementById('menueClose').onclick = function() {
         document.getElementById('menue').style.display = "none";
-        // TODO: implement proper run state
-        if (answerInput.offsetParent === null) {
+        if (state === StateReady || state === StateFinished) {
           startButton.focus();
-        } else {
+        } else if (state === StateRunning) {
           answerInput.focus();
+        } else if (state === -1) {
+          setState(StateReady);
         }
       };
 
@@ -118,29 +190,28 @@
         links[i].addEventListener('click', menuLinkClick);
       }
 
-      setParamsFromURL();
-      updateStatus();
-      loadScoreHistory();
-     
-      var showMenue = !window.location.search;
+      // Load score history
+      const scorsStr = window.localStorage.getItem(lsHistoryKey);
+      scoreHistory = scorsStr ? JSON.parse(scorsStr) : [];
+
+      var showMenue = !window.location.search && window.location.hash !== "#debug";
       if (showMenue) {
+        setParamsFromURL();
         document.getElementById('menueOpen').onclick();
-      } 
-      
-      document.getElementById('mainContent').style.display ='block';
-
-      if (!showMenue) {
-        startButton.focus();
+      } else {
+        setState(StateReady);
       }
-
+      
       if (window.location.hash === "#debug") {
         document.getElementById('debugDiv').style.display = "block";
       }
       
     }
 
+
+
     function setParamsFromURL() {
-      const paramsString = window.location.search; //'?vrange=2,9&ops=add,mult,sub,div&goal=36';
+      const paramsString = window.location.search; //'?vrange=2,9&ops=add,mult,sub,div&count=36';
       let searchParams = new URLSearchParams(paramsString);
 
       var vrange = searchParams.get("vrange") || `${defaultMin},${defaultMax}`;
@@ -165,18 +236,25 @@
       if (operators === "") {
         operators = defaultOps;
       }
-      problemCountGoal = searchParams.get("goal") || defaultGoal;
+      setType = searchParams.get("stype") || defaultSetType;
+      problemCount = searchParams.get("count") || defaultCount;
 
-      document.getElementById('inputCount').value = problemCountGoal;
+      document.getElementById('inputCount').value = problemCount;
       document.getElementById('settingsInfo').textContent = 
         `( ${getParamsInfoString()} )`;
     }
-    function getParamsInfoString(goal=problemCountGoal, ops=operators, min=minValue, max=maxValue) {
+    function getParamsInfoString(count=problemCount, ops=operators, min=minValue, max=maxValue, st=setType) {
       var parts = [];
 
       //Order like this: ( add sub mult div 2-12 ) 
       // new: ( #36 | add sub mult div | -12 to 12 )
-      parts.push(`#${goal} |`);
+      if (st === SetTypeAll) {
+        parts.push('All |');
+      } else if (st === SetTypeUnique) {
+        parts.push('Unique |');
+      } else {
+        parts.push(`#${count} |`);
+      }
       if (ops.includes("+")) parts.push(addChar);
       if (ops.includes("-")) parts.push(subChar);
       if (ops.includes("x")) parts.push(multChar);
@@ -189,13 +267,15 @@
     function updateStatus() {
       var status = document.getElementById('status');
 
-      if (incorrectCount != 0 && !incorrectCount) {
-        status.textContent = "\u00A0"; //`0/${problemCountGoal}`;
-        return;
+      if (state === StateReady) {
+        status.textContent = "\u00A0";
+      } else {
+        var str = `${correctCount}/${problemCount}`;
+        if (incorrectCount > 0) {
+          str += ` | Incorrect: ${incorrectCount}`;
+        }
+        status.textContent = str;
       }
-
-      // status  [13/39 | Incorrect: n ]
-      status.textContent = `${correctCount}/${problemCountGoal} | Incorrect: ${incorrectCount}`;
     }
 
     function anwserInputChanged() {
@@ -205,20 +285,10 @@
         ++correctCount;
         updateStatus();
 
-        if (correctCount >= problemCountGoal) {
-          var seconds = Math.round((Date.now() - startTime) / 1000);
-          problem.textContent = `Finished in ${seconds}s`;
-
-          document.getElementById('buttonDiv').style.display = "block";
-          document.getElementById('answerDiv').style.display = "none";
-
-          updateScore(seconds);
-
-          startButton.focus();
-
+        if (correctCount >= problemCount) {
+          nextState();
         } else {
-          newProblem();
-          window.scrollTo(0, 0);
+          nextProblem();
         }
       } else if (!answerText.startsWith(answerInput.value)) {
         
@@ -234,46 +304,159 @@
       }
     }
 
-    function onKey(event) {
-      if (event.key === "Enter") {
-        answerInput.value = "";
-        anwserInputChanged();
+
+    class ProblemSource {
+      constructor(ops, minValue, maxValue, uniquePairs) {
+        this.ops = ops;
+        this.min = minValue;
+        this.max = maxValue;
+        this.uniquePairs = uniquePairs;
       }
+
+      *getProblemsFull() {
+        var generators = [];
+        for (const op of this.ops) {
+          generators.push(this.getProblemsOpFull(op));
+        }
+        while (generators.length > 0) {
+          var index = getRandomInt(generators.length);
+          var result = generators[index].next();
+          if (result.done) {
+            generators.splice(index, 1);
+            continue;
+          }
+          yield result.value;
+        }
+      }
+
+      *getProblems(count) {
+        var generators = [];
+        var perCount = Math.floor(count / this.ops.length);
+        var remainderCount = count %  this.ops.length;
+        for (const op of this.ops) {
+          var gCount = perCount + (remainderCount > 0 ? remainderCount-- : 0);
+          generators.push(this.getProblemsOp(op, gCount));
+        }
+
+        for (var i = 0; i < count; ++i) {
+          var result = null;
+          while (generators.length > 0) {
+            var index = getRandomInt(generators.length);
+            result = generators[index].next();
+            if (!result.done) {
+              break;
+            } else {
+              generators.splice(index, 1);
+            }
+          }
+          yield result.value;
+        }
+      }
+
+      *getProblemsOpFull(op) {
+        var pSet = this.#getSourceSet(op);
+        while (pSet.length > 0) {
+          var index = getRandomInt(pSet.length);
+          var prob = pSet[index];
+          pSet.splice(index, 1);
+          yield prob;
+        }
+      }
+
+      *getProblemsOp(op, count) {
+        var pSet = null;
+
+        for (var i = 0; i < count; ++i) {
+          if (!pSet || pSet.length <= 0) {
+            pSet = this.#getSourceSet(op);
+          }
+          
+          var index = getRandomInt(pSet.length);
+          var prob = pSet[index];
+          pSet.splice(index, 1);
+
+          yield prob;
+        }
+      }
+
+      #getSourceSet(op) {
+        var list = [];
+
+        if (!this.uniquePairs || (op !== 'x' && op !== '+')) {
+          for (var lv = this.min; lv <= this.max; ++lv) {
+            for (var rv = this.min; rv <= this.max; ++rv) {
+              var left;
+              if (op === "/") {
+                left = lv * rv;
+              } else if (op === "-") {
+                left = lv + rv;
+              } else {
+                left = lv;
+              }
+              if (op === '/' && rv === 0) continue; // exclude div by zero
+              list.push({
+                op: op,
+                lv: left,
+                rv: rv
+              })
+            }
+          }
+        } else {
+          for (var lv = this.min; lv <= this.max; ++lv) {
+            for (var rv = lv; rv <= this.max; ++rv) {
+              if (getRandomInt(2) === 0) {
+                list.push({
+                  op: op,
+                  lv: lv,
+                  rv: rv
+                })
+              } else {
+                list.push({
+                  op: op,
+                  lv: rv,
+                  rv: lv
+                })
+              }
+            }
+          }
+        }
+        return list;
+      }
+
     }
 
 
-    // Ideas:
-    // - Equal/balanced number of operator types, numbers
+    
+    var cards = [];
+    var cardsIncorrectIndexes = [];
+
+    function getCards() {
+      var uniquePairs = setType === SetTypeUnique;
+      var pSource = new ProblemSource(operators, minValue, maxValue, uniquePairs);
+
+      if (setType === SetTypeCount) {
+        return [...pSource.getProblems(problemCount)];
+      } else {
+        return [...pSource.getProblemsFull()];
+      }
+    }
 
     var incorrectFlag;
-    function newProblem() {
+    function nextProblem() {
       incorrectFlag = false;
 
-      var newProblemText, lv, rv, op;
-      var limit = 30;
+      var lv, rv, op;
 
-      do {
+      lv = cards[correctCount].lv;
+      rv = cards[correctCount].rv;
+      op = cards[correctCount].op;
+      problem.textContent = `${lv} ${operatorToChar(op)} ${rv}`;
 
-        if (limit-- <= 0) break;
-
-        var lv = getRandomInt(maxValue-minValue+1) + minValue;
-        var rv = getRandomInt(maxValue-minValue+1) + minValue;
-        var op = operators[getRandomInt(operators.length)];
-
-        if (op === "/") {
-          lv = lv * rv;
-        } else if (op === "-") {
-          lv = lv + rv;
-        }
-
-        newProblemText = `${lv} ${operatorToChar(op)} ${rv}`;
-      } while (problem.textContent === newProblemText || (op === "/" && rv == 0));
-
-      problem.textContent = newProblemText;
       answerText = `${getAnswer(op, lv, rv)}`;
 
       answerInput.value = "";
       answerInput.focus();
+      window.scrollTo(0, 0);
     }
 
     function operatorToChar(op) {
@@ -310,7 +493,7 @@
     }
 
 
-    var scoreHistory = [];
+    var scoreHistory = null;
     const scoreHistoryMaxLength = 1000;
     const lsHistoryKey = 'flashmath.time-next.html.history';
 
@@ -367,11 +550,7 @@
       return row;
     }
 
-    function loadScoreHistory(limit=50) {
-      const scorsStr = window.localStorage.getItem(lsHistoryKey);
-      if (scorsStr) {
-        scoreHistory = JSON.parse(scorsStr);
-      }
+    function renderScoreHistory(limit=50) {
 
       document.getElementById('historyHeader').style.display = 
         scoreHistory.length > 0 ? "block" : "none";
@@ -384,7 +563,7 @@
       table.textContent = '';
       for (var i = scoreHistory.length - 1; i >= 0; --i) {
         var item = scoreHistory[i];
-        var curSettingsStr = getParamsInfoString(item.count, item.ops, item.minValue, item.maxValue)
+        var curSettingsStr = getParamsInfoString(item.count, item.ops, item.minValue, item.maxValue, item.setType)
         if (lastSettingsStr !== curSettingsStr) {
           lastSettingsStr = curSettingsStr;
           table.appendChild(settingStrToElement(curSettingsStr));
@@ -397,7 +576,7 @@
     }
 
     function showAllHistory() {
-      loadScoreHistory(scoreHistoryMaxLength);
+      renderScoreHistory(scoreHistoryMaxLength);
       return false;
     }
 
@@ -406,13 +585,14 @@
     function updateScore(seconds) {
       const item = {
         date: Date.now(),
-        count: problemCountGoal,
+        count: problemCount,
         ops: operators,
         minValue: minValue,
         maxValue: maxValue,
         incorrectCount: incorrectCount,
         time: seconds,
-        isCompleate: true
+        isCompleate: true,
+        setType: setType
       }
       scoreHistory[scoreHistory.length - 1] = item;
       storeScoreHistory();
@@ -421,13 +601,14 @@
     function addNewScore() {
       const item = {
         date: Date.now(),
-        count: problemCountGoal,
+        count: problemCount,
         ops: operators,
         minValue: minValue,
         maxValue: maxValue,
         //incorrectCount: incorrectCount,
         //time: seconds,
-        isCompleate: false
+        isCompleate: false,
+        setType: setType
       }
       scoreHistory.push(item);
       // var table = document.getElementById('historyTable');
@@ -445,7 +626,7 @@
       for (var i = 0; i < 1000; ++i) {
         scoreHistory.push({
           date: Date.now(),
-          count: problemCountGoal,
+          count: problemCount,
           ops: operators,
           minValue: minValue,
           maxValue: maxValue,
@@ -463,165 +644,172 @@
   </script>
 
   <style>
-
     body {
       /* font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif */
       font-family: Arial, Helvetica, sans-serif;
     }
-
-      #problem {
-        margin-top: 1.3em;
-        margin-bottom: 1.3em;
-        vertical-align: middle;
-        text-align: center;
-        font-size: 2.5rem;
-      }
-
-      #answerInput {
-        text-align: center;
-        width: 5em;
-        font-size: 2rem;
-      }
-
-      #settingsInfo {
-        font-size: 1.30rem;
-      }
-
-      #startButton {
-        font-size: 2.5rem;
-        padding: 0.2em 1em 0.2em 1em;
-      }
-
-      #buttonDiv {
-        text-align: center;
-      }
-
-      #answerDiv {
-        text-align: center;
-        display: none;
-      }
-
-      #answerInput::-webkit-outer-spin-button,
-      #answerInput::-webkit-inner-spin-button {
-          -webkit-appearance: none;
-          margin: 0; 
-      }
-
-      #answerInput[type=number] {
-          -moz-appearance:textfield; /* Firefox */
-      }
-
-      #answerInput:invalid {
-        color: red;
-      }
-
-      #answerInput:valid {
-        color: black;
-      }
-
-      #mainContent {
-        display: none;
-      }
-
-      #menue {
-        width: 100%;
-        min-height: 100%;
-        position: absolute;
-        top: 0;
-        left: 0;
-        background: white;
-        display: none;
-      }
-
-
-      #menueHeader {
-        margin: 0.5em; 
-      }
-
-
-
-      #menueContent {
-        display:table;
-        margin-top: 2em;
-        margin-left: auto;
-        margin-right: auto;
-        font-size: 1.25rem;
-      }
-
-      
-      #menueContent ul {
-        list-style-type: none;
-        padding: 0;
-      }
-      #menueContent li {
-        margin: 0em 0em 0.6em 0em ;
-      }
-      #menueContent a {
-        margin: 0em 0.25em 0em 0.25em ;
-      }
-      #inputCount {
-        text-align: center;
-        margin: 0em 0.25em 0em 0.25em ;
-        width: 3em;
-        font-size: inherit;
-      }
-      #menuReloadButton {
-        font-size: inherit;
-      }
-
-
-      #menueContent a:link {
-        color: black;
-      }
-
-      #menueContent a:visited {
-        color: black;
-      }
-
-      #status {
-        padding: 0 0.5em;
-        font-size: 1.25rem;
-      }
-
-      #menueOpen, #menueClose {
-        padding: 0 0.25em;
-        font-size: 1.4rem;
-      }
-
-      #menueOpen:after {
-        content: '\2807';
-      }
-      #menueClose:after {
-        content: '\2716';
-      }
-
-      #historyDiv {
-        margin: 1em 0;
-      }
-
-      #historyHeader {
-        display: none;
-        font-weight: bold;
-        margin-bottom: 0.25em;
-      }
-
-      .tdHistorySettingsHeader {
-        padding-top: 0.3em;
-        white-space: nowrap;
-      }
-      .tdHistoryDate {
-        color: darkgray;
-       padding-left: 0.4em; 
-      }
-      .tdHistoryTime {
-        padding-left: 0.58em;
-      }
-
-      #debugDiv {
-        display: none;
-      }
-
-    </style>
+  
+    #problem {
+      margin-top: 1.3em;
+      margin-bottom: 1.3em;
+      vertical-align: middle;
+      text-align: center;
+      font-size: 2.5rem;
+    }
+  
+    #answerInput {
+      text-align: center;
+      width: 5em;
+      font-size: 2rem;
+    }
+  
+    #settingsInfo {
+      font-size: 1.30rem;
+    }
+  
+    #startButton {
+      font-size: 2.5rem;
+      padding: 0.2em 1em 0.2em 1em;
+    }
+  
+    #buttonDiv {
+      text-align: center;
+    }
+  
+    #answerDiv {
+      text-align: center;
+      display: none;
+    }
+  
+    #answerInput::-webkit-outer-spin-button,
+    #answerInput::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  
+    #answerInput[type=number] {
+      -moz-appearance: textfield;
+    }
+  
+    #answerInput:invalid {
+      color: red;
+    }
+  
+    #answerInput:valid {
+      color: black;
+    }
+  
+    #mainContent {
+      display: none;
+    }
+  
+    #menue {
+      width: 100%;
+      min-height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      background: white;
+      display: none;
+    }
+  
+  
+    #menueHeader {
+      margin: 0.5em;
+    }
+  
+  
+  
+    #menueContent {
+      display: table;
+      margin-top: 2em;
+      margin-left: auto;
+      margin-right: auto;
+      font-size: 1.25rem;
+    }
+  
+  
+    #menueContent ul {
+      list-style-type: none;
+      padding: 0;
+    }
+  
+    #menueContent li, div {
+      margin: 0em 0em 0.6em 0em;
+    }
+  
+    #menueContent a {
+      margin: 0em 0.25em 0em 0.25em;
+    }
+  
+    #inputCount {
+      text-align: center;
+      margin: 0em 0.25em 0em 0.25em;
+      width: 3em;
+      font-size: inherit;
+    }
+  
+    #menuReloadButton {
+      font-size: inherit;
+    }
+  
+  
+    #menueContent a:link {
+      color: black;
+    }
+  
+    #menueContent a:visited {
+      color: black;
+    }
+  
+    #status {
+      padding: 0 0.5em;
+      font-size: 1.25rem;
+    }
+  
+    #menueOpen,
+    #menueClose {
+      padding: 0 0.25em;
+      font-size: 1.4rem;
+    }
+  
+    #menueOpen:after {
+      content: '\2807';
+    }
+  
+    #menueClose:after {
+      content: '\2716';
+    }
+  
+    #historyDiv {
+      margin: 1em 0;
+    }
+  
+    #historyHeader {
+      display: none;
+      font-weight: bold;
+      margin-bottom: 0.25em;
+    }
+  
+    .tdHistorySettingsHeader {
+      padding-top: 0.3em;
+      white-space: nowrap;
+    }
+  
+    .tdHistoryDate {
+      color: darkgray;
+      padding-left: 0.4em;
+    }
+  
+    .tdHistoryTime {
+      padding-left: 0.58em;
+    }
+  
+    #debugDiv {
+      display: none;
+      margin: 1rem;
+    }
+  </style>
 </head>
 
 <body onload="onLoad();">
@@ -639,12 +827,14 @@
     </div>
 
     <div id="answerDiv">
-      <input id="answerInput" placeholder="Answer" type="number" inputmode="numeric" pattern="\d*" />
+      <!-- <input id="answerInput" placeholder="Answer" type="number" inputmode="numeric" pattern="\d*" /> -->
+      <input id="answerInput" placeholder="Answer" type="tel" inputmode="numeric" pattern="\d*" />
     </div>
 
     <div id="debugDiv">
       <button onclick="test_saveRandomScores();">Gen Test Data</button>
       <button onclick="test_clearLocalStore();">Clear Local Store</button>
+      <button onclick="nextState();">Next State</button>
     </div>
   </div>
 
@@ -657,39 +847,45 @@
     <div id="menueContent">
       <ul id="settingsLinks">
         <li>
-          Problems: <input id="inputCount" type="number" min="1" inputmode="numeric" pattern="\d*" />
-          <button id="menuReloadButton" onclick="menuReloadButton();">Reload</button>
+          <div><input type="radio" id="rbAll" name="sType" value="all"><label for="rbAll">All</label></div>
+          <div><input type="radio" id="rbUnique" name="sType" value="unique"><label for="rbUnique">Unique</label></div>
+          <div>
+            <input type="radio" id="rbCount" name="sType" value="count"><label for="rbCount">Count</label>
+            <input id="inputCount" type="number" min="1" inputmode="numeric" pattern="\d*" />
+            <button id="menuReloadButton" onclick="menuReloadButton();">Reload</button>
+          </div>
+          
         </li>
         <li>Addition:
-          <a href="?vrange=2,12&ops=add&goal=36">2-12</a> |
-          <a href="?vrange=2,24&ops=add&goal=36">2-24</a>
+          <a href="?vrange=2,12&ops=add&count=36">2-12</a> |
+          <a href="?vrange=2,24&ops=add&count=36">2-24</a>
         </li>
         <li>Subtraction:
-          <a href="?vrange=2,12&ops=sub&goal=36">2-12</a> |
-          <a href="?vrange=2,24&ops=sub&goal=36">2-24</a>
+          <a href="?vrange=2,12&ops=sub&count=36">2-12</a> |
+          <a href="?vrange=2,24&ops=sub&count=36">2-24</a>
         </li>
         <li>Multiplication:
-          <a href="?vrange=2,9&ops=mult&goal=36">2-9</a> |
-          <a href="?vrange=6,9&ops=mult&goal=36">6-9</a> |
-          <a href="?vrange=2,12&ops=mult&goal=36">2-12</a>
+          <a href="?vrange=2,9&ops=mult&count=36">2-9</a> |
+          <a href="?vrange=6,9&ops=mult&count=36">6-9</a> |
+          <a href="?vrange=2,12&ops=mult&count=36">2-12</a>
         </li>
         <li>Division:
-          <a href="?vrange=2,9&ops=div&goal=36">2-9</a> |
-          <a href="?vrange=6,9&ops=div&goal=36">6-9</a> |
-          <a href="?vrange=2,12&ops=div&goal=36">2-12</a>
+          <a href="?vrange=2,9&ops=div&count=36">2-9</a> |
+          <a href="?vrange=6,9&ops=div&count=36">6-9</a> |
+          <a href="?vrange=2,12&ops=div&count=36">2-12</a>
         </li>
-        <li>All:
-          <a href="?vrange=2,9&ops=add,sub,mult,div&goal=36">2-9</a> |
-          <a href="?vrange=6,9&ops=add,sub,mult,div&goal=36">6-9</a> |
-          <a href="?vrange=2,12&ops=add,sub,mult,div&goal=36">2-12</a>
+        <li>All operators:
+          <a href="?vrange=2,9&ops=add,sub,mult,div&count=36">2-9</a> |
+          <!-- <a href="?vrange=6,9&ops=add,sub,mult,div&count=36">6-9</a> | -->
+          <a href="?vrange=2,12&ops=add,sub,mult,div&count=36">2-12</a>
         </li>
         <li>Add and Sub:
-          <a href="?vrange=2,24&ops=add,sub&goal=36">2-24</a> |
-          <a href="?vrange=2,36&ops=add,sub&goal=36">2-36</a>
+          <a href="?vrange=2,24&ops=add,sub&count=36">2-24</a> |
+          <a href="?vrange=2,36&ops=add,sub&count=36">2-36</a>
         </li>
         <li>Mult and Div:
-          <a href="?vrange=2,9&ops=mult,div&goal=36">2-9</a> |
-          <a href="?vrange=2,12&ops=mult,div&goal=36">2-12</a>
+          <a href="?vrange=2,9&ops=mult,div&count=36">2-9</a> |
+          <a href="?vrange=2,12&ops=mult,div&count=36">2-12</a>
         </li>
       </ul>
   
