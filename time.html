@@ -16,7 +16,6 @@
     
 
     const SetTypeAll = 'all';
-    const SetTypeUnique = 'unique';
     const SetTypeCount = 'count';
 
 
@@ -92,6 +91,7 @@
     const defaultOps = "x";
     const defaultCount = 36;
     const defaultSetType = SetTypeCount;
+    const defaultExcludeDupPairs = true;
 
     // Unicode math operator chars
     const addChar  = "\u002B";
@@ -104,18 +104,27 @@
     var operators = defaultOps;
     var problemCount = defaultCount;
     var setType = defaultSetType;
-    
+    var excludeDupPairs = defaultExcludeDupPairs;
 
+    function menuOpen(e) {
+      renderScoreHistory();
+      var rb = document.querySelector(`#menueContent input[value="${setType}"]`);
+      if (rb) rb.checked = true;
+      document.getElementById('chkExcludeDups').checked = excludeDupPairs;
+      document.getElementById('menue').style.display = "block";
+    }
     function menuLinkClick(e) {
-
-      var st = document.querySelector('#menueContent input[name="sType"]:checked').value;
-
       e.preventDefault();
+
       var count = inputCount.value;
+      var st = document.querySelector('#menueContent input[name="sType"]:checked').value;
+      var xdp = document.getElementById('chkExcludeDups').checked;
+      
       var href = e.target.getAttribute("href");
       var searchParams = new URLSearchParams(href);
       searchParams.set("count", count);
       searchParams.set("stype", st);
+      searchParams.set("xdp", xdp);
       window.location.href = `?${searchParams.toString()}`;
     }
     function menuReloadButton() {
@@ -146,15 +155,21 @@
       });
 
       inputCount = document.getElementById("inputCount");
-      inputCount.addEventListener('input', e => {
+      document.getElementById("menue").addEventListener('change', function(e) {
         var count = inputCount.value;
+        var st = document.querySelector('#menueContent input[name="sType"]:checked').value;
+        var xdp = document.getElementById('chkExcludeDups').checked;
+
         var searchParams = new URLSearchParams(window.location.search);
         searchParams.set("count", count);
+        searchParams.set("stype", st);
+        searchParams.set("xdp", xdp);
         var newQStr = searchParams.toString();
         if(history.replaceState) {
             window.history.replaceState(null, null, `?${newQStr}`);
         }
       });
+
       inputCount.addEventListener('keydown', event => {
         if (event.key === "Enter") {
           menuReloadButton();
@@ -163,17 +178,12 @@
       inputCount.addEventListener('focus', e =>{
         e.target.select();
       });
-
-
+      
       startButton.onclick = function() {
         setState(StateRunning);
       };
 
-      document.getElementById('menueOpen').onclick = function() {
-        renderScoreHistory();
-        document.querySelector(`#menueContent input[value="${setType}"]`).checked = true;
-        document.getElementById('menue').style.display = "block";
-      };
+      document.getElementById('menueOpen').onclick = menuOpen;
       document.getElementById('menueClose').onclick = function() {
         document.getElementById('menue').style.display = "none";
         if (state === StateReady || state === StateFinished) {
@@ -184,6 +194,8 @@
           setState(StateReady);
         }
       };
+
+
 
       var links = Array.prototype.slice.call(document.getElementById('settingsLinks').getElementsByTagName('a'));
       for(var i = 0; i < links.length; i++) {
@@ -238,6 +250,8 @@
       }
       setType = searchParams.get("stype") || defaultSetType;
       problemCount = searchParams.get("count") || defaultCount;
+      var xdpStr = searchParams.get("xdp");
+      excludeDupPairs = xdpStr ? searchParams.get("xdp") === 'true' : defaultExcludeDupPairs;
 
       document.getElementById('inputCount').value = problemCount;
       document.getElementById('settingsInfo').textContent = 
@@ -246,12 +260,9 @@
     function getParamsInfoString(count=problemCount, ops=operators, min=minValue, max=maxValue, st=setType) {
       var parts = [];
 
-      //Order like this: ( add sub mult div 2-12 ) 
-      // new: ( #36 | add sub mult div | -12 to 12 )
+      // ( #36 | add sub mult div | -12 to 12 )
       if (st === SetTypeAll) {
-        parts.push('All |');
-      } else if (st === SetTypeUnique) {
-        parts.push('Unique |');
+        parts.push(excludeDupPairs ? 'Unique |' : 'All |');
       } else {
         parts.push(`#${count} |`);
       }
@@ -383,8 +394,8 @@
         var list = [];
 
         if (!this.uniquePairs || (op !== 'x' && op !== '+')) {
-          for (var lv = this.min; lv <= this.max; ++lv) {
-            for (var rv = this.min; rv <= this.max; ++rv) {
+          for (let lv = this.min; lv <= this.max; ++lv) {
+            for (let rv = this.min; rv <= this.max; ++rv) {
               var left;
               if (op === "/") {
                 left = lv * rv;
@@ -402,8 +413,8 @@
             }
           }
         } else {
-          for (var lv = this.min; lv <= this.max; ++lv) {
-            for (var rv = lv; rv <= this.max; ++rv) {
+          for (let lv = this.min; lv <= this.max; ++lv) {
+            for (let rv = lv; rv <= this.max; ++rv) {
               if (getRandomInt(2) === 0) {
                 list.push({
                   op: op,
@@ -431,8 +442,7 @@
     var cardsIncorrectIndexes = [];
 
     function getCards() {
-      var uniquePairs = setType === SetTypeUnique;
-      var pSource = new ProblemSource(operators, minValue, maxValue, uniquePairs);
+      var pSource = new ProblemSource(operators, minValue, maxValue, excludeDupPairs);
 
       if (setType === SetTypeCount) {
         return [...pSource.getProblems(problemCount)];
@@ -737,6 +747,10 @@
     #menueContent li, div {
       margin: 0em 0em 0.6em 0em;
     }
+
+    .settingsOption {
+      margin-left: 1em;
+    }
   
     #menueContent a {
       margin: 0em 0.25em 0em 0.25em;
@@ -845,47 +859,62 @@
     </div>
   
     <div id="menueContent">
+
       <ul id="settingsLinks">
         <li>
-          <div><input type="radio" id="rbAll" name="sType" value="all"><label for="rbAll">All</label></div>
-          <div><input type="radio" id="rbUnique" name="sType" value="unique"><label for="rbUnique">Unique</label></div>
           <div>
-            <input type="radio" id="rbCount" name="sType" value="count"><label for="rbCount">Count</label>
-            <input id="inputCount" type="number" min="1" inputmode="numeric" pattern="\d*" />
-            <button id="menuReloadButton" onclick="menuReloadButton();">Reload</button>
+            <input type="radio" id="rbAll" name="sType" value="all">
+            <label for="rbAll">All Problems</label>
           </div>
-          
+          <div class="settingsOption">
+            <input type="checkbox" id="chkExcludeDups" name="sTypeExcludeDups">
+            <label for="chkExcludeDups">
+              Unique <br>
+              <span style="color: darkgray; font-size: 80%;">
+                Excludes duplicate pairs for + &times;
+              </span>
+            </label>
+          </div>
+          <div>
+            <input type="radio" id="rbCount" name="sType" value="count">
+            <label for="rbCount">Custom Count:</label>
+            <input id="inputCount" type="number" min="1" inputmode="numeric" pattern="\d*" />
+          </div>
+          <!-- <div style="text-align: right; padding-right: 3em;"> -->
+          <div>
+            <button id="menuReloadButton" onclick="menuReloadButton();">Reload</button>
+          </div>          
         </li>
         <li>Addition:
-          <a href="?vrange=2,12&ops=add&count=36">2-12</a> |
-          <a href="?vrange=2,24&ops=add&count=36">2-24</a>
+          <a href="?vrange=2,12&ops=add">2-12</a> |
+          <a href="?vrange=2,24&ops=add">2-24</a>
         </li>
         <li>Subtraction:
-          <a href="?vrange=2,12&ops=sub&count=36">2-12</a> |
-          <a href="?vrange=2,24&ops=sub&count=36">2-24</a>
+          <a href="?vrange=2,12&ops=sub">2-12</a> |
+          <a href="?vrange=2,24&ops=sub">2-24</a>
         </li>
         <li>Multiplication:
-          <a href="?vrange=2,9&ops=mult&count=36">2-9</a> |
-          <a href="?vrange=6,9&ops=mult&count=36">6-9</a> |
-          <a href="?vrange=2,12&ops=mult&count=36">2-12</a>
+          <a href="?vrange=2,9&ops=mult">2-9</a> |
+          <a href="?vrange=6,9&ops=mult">6-9</a> |
+          <a href="?vrange=2,12&ops=mult">2-12</a>
         </li>
         <li>Division:
-          <a href="?vrange=2,9&ops=div&count=36">2-9</a> |
-          <a href="?vrange=6,9&ops=div&count=36">6-9</a> |
-          <a href="?vrange=2,12&ops=div&count=36">2-12</a>
+          <a href="?vrange=2,9&ops=div">2-9</a> |
+          <a href="?vrange=6,9&ops=div">6-9</a> |
+          <a href="?vrange=2,12&ops=div">2-12</a>
         </li>
         <li>All operators:
-          <a href="?vrange=2,9&ops=add,sub,mult,div&count=36">2-9</a> |
-          <!-- <a href="?vrange=6,9&ops=add,sub,mult,div&count=36">6-9</a> | -->
-          <a href="?vrange=2,12&ops=add,sub,mult,div&count=36">2-12</a>
+          <a href="?vrange=2,9&ops=add,sub,mult,div">2-9</a> |
+          <!-- <a href="?vrange=6,9&ops=add,sub,mult,div">6-9</a> | -->
+          <a href="?vrange=2,12&ops=add,sub,mult,div">2-12</a>
         </li>
         <li>Add and Sub:
-          <a href="?vrange=2,24&ops=add,sub&count=36">2-24</a> |
-          <a href="?vrange=2,36&ops=add,sub&count=36">2-36</a>
+          <a href="?vrange=2,24&ops=add,sub">2-24</a> |
+          <a href="?vrange=2,36&ops=add,sub">2-36</a>
         </li>
         <li>Mult and Div:
-          <a href="?vrange=2,9&ops=mult,div&count=36">2-9</a> |
-          <a href="?vrange=2,12&ops=mult,div&count=36">2-12</a>
+          <a href="?vrange=2,9&ops=mult,div">2-9</a> |
+          <a href="?vrange=2,12&ops=mult,div">2-12</a>
         </li>
       </ul>
   
