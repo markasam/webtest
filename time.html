@@ -726,13 +726,13 @@
   
     #menueHeader {
       margin: 0.5em;
+      margin-bottom: 0;
     }
   
   
   
     #menueContent {
       display: table;
-      margin-top: 2em;
       margin-left: auto;
       margin-right: auto;
       font-size: 1.25rem;
@@ -742,6 +742,7 @@
     #menueContent ul {
       list-style-type: none;
       padding: 0;
+      margin-top: 0;
     }
   
     #menueContent li, div {
@@ -787,14 +788,6 @@
       font-size: 1.4rem;
     }
   
-    #menueOpen:after {
-      content: '\2807';
-    }
-  
-    #menueClose:after {
-      content: '\2716';
-    }
-  
     #historyDiv {
       margin: 1em 0;
     }
@@ -830,35 +823,37 @@
 
   <div id="mainContent">
     <div id="header">
-      <span id="status"></span>
-      <span id="menueOpen" style="float: right;"></span>
+      <span id="status" style="float: left;"></span>
+      <span id="menueOpen" style="float: right;">&#10247;</span>
     </div>
-    <p id="problem"></p>
-
-    <div id="buttonDiv">
-      <p id="settingsInfo"></p>
-      <button id="startButton">Start</button>
-    </div>
-
-    <div id="answerDiv">
-      <!-- <input id="answerInput" placeholder="Answer" type="number" inputmode="numeric" pattern="\d*" /> -->
-      <input id="answerInput" placeholder="Answer" type="tel" inputmode="numeric" pattern="\d*" />
-    </div>
-
-    <div id="debugDiv">
-      <button onclick="test_saveRandomScores();">Gen Test Data</button>
-      <button onclick="test_clearLocalStore();">Clear Local Store</button>
-      <button onclick="nextState();">Next State</button>
+    <div style="clear: both; padding-top: 1px;">
+      <p id="problem"></p>
+    
+      <div id="buttonDiv">
+        <p id="settingsInfo"></p>
+        <button id="startButton">Start</button>
+      </div>
+    
+      <div id="answerDiv">
+        <!-- <input id="answerInput" placeholder="Answer" type="number" inputmode="numeric" pattern="\d*" /> -->
+        <input id="answerInput" placeholder="Answer" type="tel" inputmode="numeric" pattern="\d*" />
+      </div>
+    
+      <div id="debugDiv">
+        <button onclick="test_saveRandomScores();">Gen Test Data</button>
+        <button onclick="test_clearLocalStore();">Clear Local Store</button>
+        <button onclick="nextState();">Next State</button>
+      </div>
     </div>
   </div>
 
   <div id="menue">
     <div id="menueHeader">
-      <span></span>
-      <span id="menueClose" style="float: right;"></span>
+      <span style="float: left;"></span>
+      <span id="menueClose" style="float: right;" >&#10006;</span>
     </div>
   
-    <div id="menueContent">
+    <div id="menueContent" style="clear: both; padding-top: 1px;">
 
       <ul id="settingsLinks">
         <li>
