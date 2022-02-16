@@ -9,12 +9,6 @@
             "type": "pwa-chrome",
             "request": "launch",
             "file": "c:\\Users\\User\\Desktop\\web\\webtest\\time.html"
-        },
-        {
-            "name": "Open time-next.html",
-            "type": "pwa-chrome",
-            "request": "launch",
-            "file": "c:\\Users\\User\\Desktop\\web\\webtest\\time-next.html"
         }
     ]
 }
