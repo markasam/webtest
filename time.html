@@ -7,6 +7,17 @@
   <script>
     'use strict';
 
+    (() => {
+      const minStorageVersion = 1;
+      const infoStr = window.localStorage.getItem('fm.info');
+      const info = infoStr ? JSON.parse(infoStr) : {};
+      if (!info.storageVersion || info.storageVersion < minStorageVersion) {
+        window.localStorage.clear();
+        info.storageVersion = minStorageVersion;
+        window.localStorage.setItem('fm.info', JSON.stringify(info));
+      }
+    })();
+
     var state = -1;
     const StateReady = 0;
     const StateRunning = 1;
@@ -31,6 +42,7 @@
             incorrectCount = correctCount = 0;
             updateStatus();
             problem.textContent = "";
+            document.getElementById('resultsDiv').style.display = "none";
             document.getElementById('answerDiv').style.display = "none";
             document.getElementById('buttonDiv').style.display = "block";
             document.getElementById('mainContent').style.display ='block';
@@ -39,6 +51,7 @@
           break;
         case StateRunning:
           {
+            document.getElementById('resultsDiv').style.display = "none";
             document.getElementById('buttonDiv').style.display = "none";
             document.getElementById('answerDiv').style.display = "block";
             
@@ -59,10 +72,15 @@
             var seconds = Math.round((Date.now() - startTime) / 1000);
             problem.textContent = `Finished in ${seconds}s`;
 
+            
             document.getElementById('buttonDiv').style.display = "";
             document.getElementById('answerDiv').style.display = "none";
-
+            
             updateScore(seconds);
+
+            renderProblems(cards);
+            document.getElementById('resultsDiv').style.display = "";
+
             startButton.focus();
           }
           break;
@@ -106,12 +124,16 @@
     var setType = defaultSetType;
     var excludeDupPairs = defaultExcludeDupPairs;
 
+
+
     function menuOpen(e) {
       renderScoreHistory();
       var rb = document.querySelector(`#menueContent input[value="${setType}"]`);
       if (rb) rb.checked = true;
+      menuUpdateSettingsInfo();
       document.getElementById('chkExcludeDups').checked = excludeDupPairs;
       document.getElementById('menue').style.display = "block";
+      document.getElementById('mainContent').style.display ='none';
     }
     function menuLinkClick(e) {
       e.preventDefault();
@@ -140,6 +162,7 @@
       if(history.replaceState) {
           window.history.replaceState(null, null, `?${newQStr}`);
       }
+      menuUpdateSettingsInfo();
     }
     function menuReloadButton() {
       if (!window.location.search) {
@@ -180,6 +203,9 @@
       inputCount.addEventListener('focus', e =>{
         e.target.select();
       });
+
+      //showAllHistory
+      document.getElementById('historyShowAllLink').addEventListener('click', showAllHistory)
       
       startButton.onclick = function() {
         setState(StateRunning);
@@ -187,6 +213,7 @@
 
       document.getElementById('menueOpen').onclick = menuOpen;
       document.getElementById('menueClose').onclick = function() {
+        document.getElementById('mainContent').style.display ='block';
         document.getElementById('menue').style.display = "none";
         if (state === StateReady || state === StateFinished) {
           startButton.focus();
@@ -222,49 +249,68 @@
       
     }
 
+    function getParamsFromURL() {
+      let p = {};
+      let searchParams = new URLSearchParams(window.location.search);
 
-
-    function setParamsFromURL() {
-      const paramsString = window.location.search; //'?vrange=2,9&ops=add,mult,sub,div&count=36';
-      let searchParams = new URLSearchParams(paramsString);
-
-      var vrange = searchParams.get("vrange") || `${defaultMin},${defaultMax}`;
-      var vrParts = vrange.split(",");
-      minValue = parseInt(vrParts[0]); if (isNaN(minValue)) minValue = defaultMin;
-      maxValue = parseInt(vrParts[1]); if (isNaN(maxValue)) minValue = defaultMax;
-      var ops = searchParams.get("ops"); // "add,mult,sub,div";
-      operators = "";
+      let vrange = searchParams.get("vrange") || `${defaultMin},${defaultMax}`;
+      let vrParts = vrange.split(",");
+      p.minValue = parseInt(vrParts[0]); if (isNaN(p.minValue)) p.minValue = defaultMin;
+      p.maxValue = parseInt(vrParts[1]); if (isNaN(p.maxValue)) p.minValue = defaultMax;
+      let ops = searchParams.get("ops"); // "add,mult,sub,div";
+      p.operators = "";
       if (ops) {
-        var opsParts = ops.split(",");
-        
+        let opsParts = ops.split(",");
         for (const e of opsParts) {
           switch (e) {
-            case "add":  operators += "+"; break;
-            case "mult": operators += "x"; break;
-            case "sub":  operators += "-"; break;
-            case "div":  operators += "/"; break;
+            case "add":  p.operators += "+"; break;
+            case "mult": p.operators += "x"; break;
+            case "sub":  p.operators += "-"; break;
+            case "div":  p.operators += "/"; break;
             default: break;
           }
         }
       }
-      if (operators === "") {
-        operators = defaultOps;
+      if (p.operators === "") {
+        p.operators = defaultOps;
       }
-      setType = searchParams.get("stype") || defaultSetType;
-      problemCount = searchParams.get("count") || defaultCount;
-      var xdpStr = searchParams.get("xdp");
-      excludeDupPairs = xdpStr ? searchParams.get("xdp") === 'true' : defaultExcludeDupPairs;
+      p.setType = searchParams.get("stype") || defaultSetType;
+      p.problemCount = searchParams.get("count") || defaultCount;
+      let xdpStr = searchParams.get("xdp");
+      p.excludeDupPairs = xdpStr ? searchParams.get("xdp") === 'true' : defaultExcludeDupPairs;
+
+      return p;
+    }
+
+    function menuUpdateSettingsInfo() {
+      let info = document.getElementById('menueSettingsInfo');
+      let p = getParamsFromURL();
+      info.textContent = getParamsInfoString(
+        p.problemCount, p.operators, p.minValue, p.maxValue, p.setType, p.excludeDupPairs
+      );
+    }
+
+    function setParamsFromURL() {
+      let p = getParamsFromURL();
+      
+      minValue = p.minValue;
+      maxValue = p.maxValue;
+      operators = p.operators;
+      setType = p.setType;
+      problemCount =  p.problemCount;
+      excludeDupPairs = p.excludeDupPairs;
 
       document.getElementById('inputCount').value = problemCount;
       document.getElementById('settingsInfo').textContent = 
         `( ${getParamsInfoString()} )`;
     }
-    function getParamsInfoString(count=problemCount, ops=operators, min=minValue, max=maxValue, st=setType) {
+
+    function getParamsInfoString(count=problemCount, ops=operators, min=minValue, max=maxValue, st=setType, xdp=excludeDupPairs) {
       var parts = [];
 
-      // ( #36 | add sub mult div | -12 to 12 )
+      // #36 | +-x/ | -12 to 12
       if (st === SetTypeAll) {
-        parts.push(excludeDupPairs ? 'Unique |' : 'All |');
+        parts.push(xdp ? 'Unique |' : 'All |');
       } else {
         parts.push(`#${count} |`);
       }
@@ -294,6 +340,8 @@
     function anwserInputChanged() {
       
       if (answerInput.value === answerText) {
+        const problemSeconds = (Date.now() - problemStartTime) / 1000;
+        cards[correctCount].onCompleat(problemSeconds, incorrectFlag);
 
         ++correctCount;
         updateStatus();
@@ -407,28 +455,16 @@
                 left = lv;
               }
               if (op === '/' && rv === 0) continue; // exclude div by zero
-              list.push({
-                op: op,
-                lv: left,
-                rv: rv
-              })
+              list.push(new Problem(op, left, rv));
             }
           }
         } else {
           for (let lv = this.min; lv <= this.max; ++lv) {
             for (let rv = lv; rv <= this.max; ++rv) {
               if (getRandomInt(2) === 0) {
-                list.push({
-                  op: op,
-                  lv: lv,
-                  rv: rv
-                })
+                list.push(new Problem(op, lv, rv));
               } else {
-                list.push({
-                  op: op,
-                  lv: rv,
-                  rv: lv
-                })
+                list.push(new Problem(op, rv, lv));
               }
             }
           }
@@ -438,8 +474,161 @@
 
     }
 
+    function renderProblems(problems) {
 
-    
+      function problemToTR(prob, includeTime = false) {
+        
+        var row = document.createElement('tr');
+
+        function getTD(textContent, classAttribute) {
+          var td = document.createElement('td');
+          td.setAttribute('class', classAttribute);
+          td.textContent = textContent;
+          return td;
+        }
+        
+        let c = (!prob.incorrectFlag || !includeTime) ? 'tdStat' : 'tdStat incorrect';
+        row.appendChild(getTD(prob.lv, `${c} lv`));
+        row.appendChild(getTD(operatorToChar(prob.op), c));
+        row.appendChild(getTD(prob.rv, `${c} rv`));
+
+        // 
+        // row.appendChild(getTD('=', c));
+        row.appendChild(getTD(`=\xa0${getAnswer(prob.op, prob.lv, prob.rv)}`, `${c} rv`));
+
+        // let probStr = `${prob.lv} ${operatorToChar(prob.op)} ${prob.rv}`;
+        // row.appendChild(getTD(probStr, c));
+
+        if (prob.seconds && includeTime) {
+          row.appendChild(getTD(`${prob.seconds}s`, 'tdTime'));
+        } 
+        return row;
+      }
+
+      let incorrectTable = document.getElementById('incorrectTable');
+      let timesTable =  document.getElementById('timesTable');
+      incorrectTable.innerHTML = timesTable.innerHTML = '';
+
+      let incorrectDiv = document.getElementById('incorrectDiv');
+
+      problems = [...problems];
+
+      problems.sort((a, b) => {
+        return b.seconds - a.seconds;
+      });
+
+      let hasIncorrect = false;
+      problems.forEach(p => {
+        timesTable.appendChild(problemToTR(p, true));
+        if (!p.incorrectFlag) return;
+        if (!hasIncorrect) {
+          hasIncorrect = true;
+          incorrectDiv.style.display = '';
+        }
+        incorrectTable.appendChild(problemToTR(p));
+      })
+
+      if (!hasIncorrect) {
+        incorrectDiv.style.display = 'none';
+      }
+
+    }
+
+    class Problem {
+
+      get keyPrefix() { return "fm."; }
+      get incorrectCount() { return this._incorrectCount; }
+      get history() { return this._history; }
+
+      get key() {
+        return `${this.keyPrefix}${this.lv}${this.op}${this.rv}`;
+      }
+
+      constructor(op, lv, rv) {
+        this.op = op;
+        this.lv = lv;
+        this.rv = rv;
+      }
+
+      intToHistoryItem(val) {
+        return {
+          'seconds': (val >>> 1) / 10,
+          'incorrect': (val & 1) === 1,
+        };
+      }
+      historyItemToInt(item) {
+        let secondTenths = Math.round(item.seconds * 10);
+        return (secondTenths << 1) | (+item.incorrect);
+      }
+
+      loadHistory(historyStr) {
+        if (!historyStr) {
+          this._incorrectCount = 0;
+          this._history = [];
+          return;
+        }
+
+        let vals = [];
+        for (const c of historyStr) {
+          vals.push(c.charCodeAt(0));
+        }
+        this._incorrectCount = vals[0];
+        this._history = vals.splice(1).map(v => this.intToHistoryItem(v));
+      }
+      getHistoryStr() {
+        let str = String.fromCharCode(this._incorrectCount);
+        let values = this._history.map(item => this.historyItemToInt(item));
+        return str.concat(String.fromCharCode.apply(this, values));
+      }
+      onDisplay() {
+        const historyStr = ""; // DEBUG: window.localStorage.getItem(this.key);
+        this.loadHistory(historyStr);
+      }
+      onCompleat(seconds, incorrectFlag) {
+        this.seconds = Math.round(seconds * 10) / 10;
+        this.incorrectFlag = incorrectFlag;
+        this._history.push({
+          'seconds': seconds,
+          'incorrect': incorrectFlag,
+        });
+        if (incorrectFlag) {
+          this._incorrectCount += 1;
+        }        
+        // DEBUG: const historyStr = this.getHistoryStr();
+        // DEBUG: window.localStorage.setItem(this.key, historyStr);
+      }
+      historyItemToStr() {
+        let item = this._history[this._history.length - 1];
+        return String.fromCharCode(this.lv, this.op.charCodeAt(0), this.rv, this.historyItemToInt(item));
+      }
+      loadHistoryItemStr(str) {
+        let i = 0;
+        this.lv = str.charCodeAt(i++);
+        this.op = str.substring(i++, i);
+        this.rv = str.charCodeAt(i++);
+        let item = this.intToHistoryItem(str.charCodeAt(i++));
+        this.seconds = item.seconds;
+        this.incorrectFlag = item.incorrect;
+      }
+    }
+    Problem.problemSetToStr = problems => {
+      let str = '';
+      for (const p of problems) {
+        str += p.historyItemToStr();
+      }
+      return str;
+    };
+    Problem.problemSetFromStr = str => {
+      let problems = [];
+      const fieldLength = 4;
+      for (let i = 0; i < str.length; i += fieldLength) {
+        let p = new Problem();
+        p.loadHistoryItemStr(str.substring(i,i+fieldLength));
+        problems.push(p);
+      }
+      return problems;
+    };
+
     var cards = [];
     var cardsIncorrectIndexes = [];
 
@@ -453,6 +642,7 @@
       }
     }
 
+    var problemStartTime;
     var incorrectFlag;
     function nextProblem() {
       incorrectFlag = false;
@@ -469,6 +659,9 @@
       answerInput.value = "";
       answerInput.focus();
       window.scrollTo(0, 0);
+
+      problemStartTime = Date.now();
+      cards[correctCount].onDisplay();
     }
 
     function operatorToChar(op) {
@@ -506,7 +699,7 @@
 
 
     var scoreHistory = null;
-    const scoreHistoryMaxLength = 1000;
+    const scoreHistoryMaxLength = 75;
     const lsHistoryKey = 'flashmath.time-next.html.history';
 
     function isSameDay(d0, d1) {
@@ -575,7 +768,7 @@
       table.textContent = '';
       for (var i = scoreHistory.length - 1; i >= 0; --i) {
         var item = scoreHistory[i];
-        var curSettingsStr = getParamsInfoString(item.count, item.ops, item.minValue, item.maxValue, item.setType)
+        var curSettingsStr = getParamsInfoString(item.count, item.ops, item.minValue, item.maxValue, item.setType, item.xdp);
         if (lastSettingsStr !== curSettingsStr) {
           lastSettingsStr = curSettingsStr;
           table.appendChild(settingStrToElement(curSettingsStr));
@@ -587,9 +780,9 @@
       }
     }
 
-    function showAllHistory() {
+    function showAllHistory(e) {
+      e.preventDefault();
       renderScoreHistory(scoreHistoryMaxLength);
-      return false;
     }
 
 
@@ -604,7 +797,9 @@
         incorrectCount: incorrectCount,
         time: seconds,
         isCompleate: true,
-        setType: setType
+        setType: setType,
+        xdp: excludeDupPairs,
+        set: Problem.problemSetToStr(cards),
       }
       scoreHistory[scoreHistory.length - 1] = item;
       storeScoreHistory();
@@ -620,11 +815,10 @@
         //incorrectCount: incorrectCount,
         //time: seconds,
         isCompleate: false,
-        setType: setType
+        setType: setType,
+        xdp: excludeDupPairs,
       }
       scoreHistory.push(item);
-      // var table = document.getElementById('historyTable');
-      // table.prepend(scoreHistItemToElement(item));
       storeScoreHistory();
     }
     function storeScoreHistory() {
@@ -634,7 +828,7 @@
       window.localStorage.setItem(lsHistoryKey, JSON.stringify(scoreHistory));
     }
 
-     function test_saveRandomScores() {
+    function test_saveRandomScores() {
       for (var i = 0; i < 1000; ++i) {
         scoreHistory.push({
           date: Date.now(),
@@ -743,6 +937,12 @@
       margin: 0em 0em 0.6em 0em;
     }
 
+    #menueSettingsInfo {
+      /* background-color: aqua; */
+      margin: 0em 0em 0.6em 0em;
+    }
+
+
     .settingsOption {
       padding-left: 1em;
     }
@@ -810,6 +1010,43 @@
       display: none;
       margin: 1rem;
     }
+
+    /**** Exercise results ****/
+    #resultsDiv {
+      margin-top: 1.5em;
+      margin-left: 0.5em;
+      margin-right: 0.5em;
+      font-size: 1.3rem;
+    }
+    #resultsDiv p {
+      margin: 0.2em 0 0.2em 0;
+      /* font-weight: bold; */
+    }
+    #resultsDiv .lv { text-align: right;}
+    #resultsDiv .rv { text-align: left;}
+    #resultsDiv .ev { text-align: center;}
+    #resultsDiv .tdStat {
+      /* text-align: center; */
+      padding: 1px 0.1em;
+    }
+    #resultsDiv .tdTime {
+      color: darkgray;
+      padding-left: 0.1em;
+      font-size: 90%;
+    }
+    #resultsDiv .incorrect {
+      /* color: rgb(161, 0, 0); */
+      background-color: rgba(150, 2, 2, 0.247);
+    }
+    #resultsDiv tr {
+      column-span: none;
+    }
+    #resultsDiv table {
+      margin-left:auto; 
+      margin-right:auto;
+      border-collapse:collapse;
+    }
+
   </style>
 </head>
 
@@ -835,6 +1072,21 @@
       <div id="answerDiv">
         <input id="answerInput" placeholder="Answer" type="number" inputmode="numeric" pattern="\d*" autocomplete="off" />
       </div>
+
+      <div id="resultsDiv">
+        <div id="incorrectDiv">
+          <p>Incorrect</p>
+          <div style="column-width: 7em;column-count: 3;">
+            <table id="incorrectTable"></table>
+          </div>
+        </div>
+        <div id="timesDiv">
+          <p>Results</p>
+          <div style="column-width: 7em;column-count: 3;">
+            <table id="timesTable"></table>
+          </div>
+        </div>
+      </div>
     
       <div id="debugDiv">
         <button onclick="test_saveRandomScores();">Gen Test Data</button>
@@ -852,7 +1104,7 @@
       </div>
     
       <div id="menueContent" style="clear: both; padding-top: 1px;">
-
+        <p id="menueSettingsInfo">Test</p>
         <ul id="settingsLinks">
           <li>
             <div>
@@ -915,7 +1167,7 @@
           <span id="historyHeader">History</span>
           <table id="historyTable">
           </table>
-          <a id="historyShowAllLink" href="" onclick="return showAllHistory();">Show all</a>
+          <a id="historyShowAllLink">Show all</a>
         </div>
     
       </div>
