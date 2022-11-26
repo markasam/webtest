@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Pill Day</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0"> 
+    <script>
+
+    var dayOfWeek;
+
+    (function() {
+        
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === 'visible') {
+                updateDay();
+                debug('V');
+            }
+        });
+    })();
+
+    function debug(str) {
+        if (debug.display === 'none')
+            return;
+        output.innerText = `${output.innerText},${str}`;
+    }
+
+
+    function onLoad() {
+        updateDay();
+        debug('t');
+        
+        // Note: Setting timeout for midnight tommorow didn't ended up working. 
+        //       Timer would get paused when browser not in forground resulting
+        //       in timeout period not falling anywhere near midnight (tested 
+        //       with timeout set for next minut) 
+        //
+        // var now = new Date();
+        // var t = new Date(now.getTime()+(1*24*60*60*1000)); // tommorow
+        // var midnight = new Date(t.getFullYear(), t.getMonth(), t.getDate(), 0,0,0);
+        // setTimeout(onLoad, delta);
+        
+        setTimeout(onLoad, 1000*5);
+    }
+
+
+    function updateDay() {
+        // var d = (new Date().getMinutes() % 7); // Use min for debugging
+        var d = (new Date().getDay());
+        if (dayOfWeek === d) return;
+        dayOfWeek = d;
+        updateView();
+    }
+
+    function updateView() {
+        var arrow = document.getElementById('arrow');
+        var text = document.getElementById('text');
+
+        var mLeftPercent = 0;
+
+        switch (dayOfWeek) {
+            case 0: 
+            case 1: 
+            case 2: 
+            case 3:
+                mLeftPercent = 4.7 + 13.0 * dayOfWeek; 
+                break;
+            case 4:
+                mLeftPercent = 57.0;
+                break;
+            default:
+                mLeftPercent = 57.1 + 13.5 * (dayOfWeek-4);
+                break;
+        }
+
+        arrow.style.marginLeft = `${mLeftPercent}%`;
+        text.style.marginLeft = `${mLeftPercent-9.6}%`;
+
+        arrow.style.display = "block";
+        text.style.display = "block";
+    }
+
+    function debugOnClick() {
+        dayOfWeek = (dayOfWeek + 1) % 7;
+        updateView();
+    }
+
+    </script>
+    <style>
+
+        body {
+            background-color: black;
+        }
+
+
+
+        .aspectwrapper {
+        display: inline-block; /* shrink to fit */
+        width: 100%;           /* whatever width you like */
+        position: relative;    /* so .content can use position: absolute */
+        }
+        .aspectwrapper::after {
+        padding-top: 56.25%; /* percentage of containing block _width_ */
+        display: block;
+        content: '';
+        }
+        .content {
+        position: absolute;
+        top: 0; bottom: 0; right: 0; left: 0;  /* follow the parent's edges */
+        /* outline: thin dashed green; */
+        }
+
+
+        #arrow {
+            display: none;
+            width: 10%;
+            
+            margin-top: -13%;
+            margin-left: calc(4.6% + 13.2% * 0);
+        }
+        #text {
+            display: none;
+            width: 28%;
+            font-size: 1.75em;
+            text-align: center;
+            margin-top: 0%;
+            margin-left: calc(-5% + 13.2% * 0);
+            color: chartreuse;
+        }
+
+        #debug {
+            /* display: none;  */
+        }
+        button {
+            font-size: 1.5em;
+            width: 18%;
+        }
+        #output {
+            font-size: 1.5em;
+            color: chartreuse;
+        }
+
+    </style>
+</head>
+
+<body onload="onLoad();">
+
+<div class="aspectwrapper">
+    <div class="content">
+        <img id="image" src="background.jpg" width="100%"  />
+        
+        
+        <img id="arrow" src="arrow.png" />
+        <p id="text">Take Today</p>
+    </div>
+</div>
+
+<div id="debug">
+    <p>.</p><p>.</p><p>.</p>
+    <button onclick="debugOnClick();">Test</button>
+    <p width="80%" id="output" />
+</div>
+
+</body>
