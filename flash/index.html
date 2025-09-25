@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Flash Math</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1976d2">
+
+  <script>
+    'use strict';
+
+    (() => {
+      const minStorageVersion = 1;
+      const infoStr = window.localStorage.getItem('fm.info');
+      const info = infoStr ? JSON.parse(infoStr) : {};
+      if (!info.storageVersion || info.storageVersion < minStorageVersion) {
+        window.localStorage.clear();
+        info.storageVersion = minStorageVersion;
+        window.localStorage.setItem('fm.info', JSON.stringify(info));
+      }
+    })();
+
+    var state = -1;
+    const StateReady = 0;
+    const StateRunning = 1;
+    const StateFinished = 2;
+    const StateCount = 3;
+    const StateText = ["Ready", "Running", "Finished" ];
+    
+
+    const SetTypeAll = 'all';
+    const SetTypeCount = 'count';
+
+
+    function nextState() {
+      setState((state + 1) % StateCount);
+    }
+    function setState(newState) {
+      state = newState;
+      switch (newState) {
+        case StateReady:
+          {
+            setParamsFromURL();
+            incorrectCount = correctCount = 0;
+            updateStatus();
+            problem.textContent = "";
+            document.getElementById('resultsDiv').style.display = "none";
+            document.getElementById('answerDiv').style.display = "none";
+            document.getElementById('buttonDiv').style.display = "block";
+            document.getElementById('mainContent').style.display ='block';
+            startButton.focus();
+          }
+          break;
+        case StateRunning:
+          {
+            document.getElementById('resultsDiv').style.display = "none";
+            document.getElementById('buttonDiv').style.display = "none";
+            document.getElementById('answerDiv').style.display = "block";
+            
+            setParamsFromURL();
+            cards = getCards();
+            problemCount = cards.length;
+            
+            incorrectCount = correctCount = 0;
+            nextProblem();     
+            
+            startTime = Date.now();
+            updateStatus();
+            addNewScore();
+          }
+          break;
+        case StateFinished:
+          {
+            var seconds = Math.round((Date.now() - startTime) / 1000);
+            problem.textContent = `Finished in ${seconds}s`;
+
+            
+            document.getElementById('buttonDiv').style.display = "";
+            document.getElementById('answerDiv').style.display = "none";
+            
+            updateScore(seconds);
+
+            renderProblems(cards);
+            document.getElementById('resultsDiv').style.display = "";
+
+            startButton.focus();
+          }
+          break;
+        default:
+          throw 'Unknown state';
+      }
+      
+    }
+
+    // status
+    var incorrectCount;
+    var correctCount;
+    var startTime;
+
+    // elements
+    var answerInput;
+    var startButton;
+    var problem;
+    var inputCount;
+
+    var answerText; // answer to current problem
+
+    // problem paramiters
+    const defaultMin = 2;
+    const defaultMax = 9;
+    const defaultOps = "x";
+    const defaultCount = 36;
+    const defaultSetType = SetTypeCount;
+    const defaultExcludeDupPairs = true;
+
+    // Unicode math operator chars
+    const addChar  = "\u002B";
+    const subChar  = "\u2212";
+    const multChar = "\u00D7";
+    const divChar  = "\u00F7";
+
+    var minValue = defaultMin;
+    var maxValue = defaultMax;
+    var operators = defaultOps;
+    var problemCount = defaultCount;
+    var setType = defaultSetType;
+    var excludeDupPairs = defaultExcludeDupPairs;
+
+
+
+    function menuOpen(e) {
+      renderScoreHistory();
+      var rb = document.querySelector(`#menueContent input[value="${setType}"]`);
+      if (rb) rb.checked = true;
+      menuUpdateSettingsInfo();
+      document.getElementById('chkExcludeDups').checked = excludeDupPairs;
+      document.getElementById('menue').style.display = "block";
+      document.getElementById('mainContent').style.display ='none';
+    }
+    function menuLinkClick(e) {
+      e.preventDefault();
+
+      var count = inputCount.value;
+      var st = document.querySelector('#menueContent input[name="sType"]:checked').value;
+      var xdp = document.getElementById('chkExcludeDups').checked;
+      
+      var href = e.target.getAttribute("href");
+      var searchParams = new URLSearchParams(href);
+      searchParams.set("count", count);
+      searchParams.set("stype", st);
+      searchParams.set("xdp", xdp);
+      window.location.href = `?${searchParams.toString()}`;
+    }
+    function menueChange(e) {
+      var count = inputCount.value;
+      var st = document.querySelector('#menueContent input[name="sType"]:checked').value;
+      var xdp = document.getElementById('chkExcludeDups').checked;
+
+      var searchParams = new URLSearchParams(window.location.search);
+      searchParams.set("count", count);
+      searchParams.set("stype", st);
+      searchParams.set("xdp", xdp);
+      var newQStr = searchParams.toString();
+      if(history.replaceState) {
+          window.history.replaceState(null, null, `?${newQStr}`);
+      }
+      menuUpdateSettingsInfo();
+    }
+    function menuReloadButton() {
+      if (!window.location.search) {
+        window.location.href = `?count=${inputCount.value}`;
+      } else {
+        window.location.reload();
+      }
+
+    }
+
+    function onLoad() {
+
+      // PWA: Register the service worker
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js')
+          .then(function(registration) {
+            console.log('Service Worker registered with scope:', registration.scope);
+          })
+          .catch(function(error) {
+            console.log('Service Worker registration failed:', error);
+          });
+      }
+
+      startButton = document.getElementById('startButton');
+
+      problem = document.getElementById("problem");
+
+      answerInput = document.getElementById('answerInput');
+      answerInput.addEventListener('input', anwserInputChanged);
+      answerInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          answerInput.value = "";
+          anwserInputChanged();
+        }
+      });
+      answerInput.addEventListener('focus', (event) => {
+        window.scrollTo(0, 0);
+      });
+
+      inputCount = document.getElementById("inputCount");
+      inputCount.addEventListener('input', menueChange);
+      document.getElementById("menue").addEventListener('change', menueChange);
+
+      inputCount.addEventListener('keydown', event => {
+        if (event.key === "Enter") {
+          menuReloadButton();
+        }
+      });
+      inputCount.addEventListener('focus', e =>{
+        e.target.select();
+      });
+
+      //showAllHistory
+      document.getElementById('historyShowAllLink').addEventListener('click', showAllHistory)
+      
+      startButton.onclick = function() {
+        setState(StateRunning);
+      };
+
+      document.getElementById('menueOpen').onclick = menuOpen;
+      document.getElementById('menueClose').onclick = function() {
+        document.getElementById('mainContent').style.display ='block';
+        document.getElementById('menue').style.display = "none";
+        if (state === StateReady || state === StateFinished) {
+          startButton.focus();
+        } else if (state === StateRunning) {
+          answerInput.focus();
+        } else if (state === -1) {
+          setState(StateReady);
+        }
+      };
+
+
+
+      var links = Array.prototype.slice.call(document.getElementById('settingsLinks').getElementsByTagName('a'));
+      for(var i = 0; i < links.length; i++) {
+        links[i].addEventListener('click', menuLinkClick);
+      }
+
+      // Load score history
+      const scorsStr = window.localStorage.getItem(lsHistoryKey);
+      scoreHistory = scorsStr ? JSON.parse(scorsStr) : [];
+
+      var showMenue = !window.location.search && window.location.hash !== "#debug";
+      if (showMenue) {
+        setParamsFromURL();
+        document.getElementById('menueOpen').onclick();
+      } else {
+        setState(StateReady);
+      }
+      
+      if (window.location.hash === "#debug") {
+        document.getElementById('debugDiv').style.display = "block";
+      }
+      
+    }
+
+    function getParamsFromURL() {
+      let p = {};
+      let searchParams = new URLSearchParams(window.location.search);
+
+      let vrange = searchParams.get("vrange") || `${defaultMin},${defaultMax}`;
+      let vrParts = vrange.split(",");
+      p.minValue = parseInt(vrParts[0]); if (isNaN(p.minValue)) p.minValue = defaultMin;
+      p.maxValue = parseInt(vrParts[1]); if (isNaN(p.maxValue)) p.minValue = defaultMax;
+      let ops = searchParams.get("ops"); // "add,mult,sub,div";
+      p.operators = "";
+      if (ops) {
+        let opsParts = ops.split(",");
+        for (const e of opsParts) {
+          switch (e) {
+            case "add":  p.operators += "+"; break;
+            case "mult": p.operators += "x"; break;
+            case "sub":  p.operators += "-"; break;
+            case "div":  p.operators += "/"; break;
+            default: break;
+          }
+        }
+      }
+      if (p.operators === "") {
+        p.operators = defaultOps;
+      }
+      p.setType = searchParams.get("stype") || defaultSetType;
+      p.problemCount = searchParams.get("count") || defaultCount;
+      let xdpStr = searchParams.get("xdp");
+      p.excludeDupPairs = xdpStr ? searchParams.get("xdp") === 'true' : defaultExcludeDupPairs;
+
+      return p;
+    }
+
+    function menuUpdateSettingsInfo() {
+      let info = document.getElementById('menueSettingsInfo');
+      let p = getParamsFromURL();
+      info.textContent = getParamsInfoString(
+        p.problemCount, p.operators, p.minValue, p.maxValue, p.setType, p.excludeDupPairs
+      );
+    }
+
+    function setParamsFromURL() {
+      let p = getParamsFromURL();
+      
+      minValue = p.minValue;
+      maxValue = p.maxValue;
+      operators = p.operators;
+      setType = p.setType;
+      problemCount =  p.problemCount;
+      excludeDupPairs = p.excludeDupPairs;
+
+      document.getElementById('inputCount').value = problemCount;
+      document.getElementById('settingsInfo').textContent = 
+        `( ${getParamsInfoString()} )`;
+    }
+
+    function getParamsInfoString(count=problemCount, ops=operators, min=minValue, max=maxValue, st=setType, xdp=excludeDupPairs) {
+      var parts = [];
+
+      // #36 | +-x/ | -12 to 12
+      if (st === SetTypeAll) {
+        parts.push(xdp ? 'Unique |' : 'All |');
+      } else {
+        parts.push(`#${count} |`);
+      }
+      if (ops.includes("+")) parts.push(addChar);
+      if (ops.includes("-")) parts.push(subChar);
+      if (ops.includes("x")) parts.push(multChar);
+      if (ops.includes("/")) parts.push(divChar);
+      parts.push(`| ${min} to ${max}`);
+
+      return parts.join(" ");
+    }
+
+    function updateStatus() {
+      var status = document.getElementById('statusSpan');
+
+      if (state === StateReady) {
+        status.textContent = "\u00A0";
+      } else {
+        var str = `${correctCount}/${problemCount}`;
+        if (incorrectCount > 0) {
+          str += ` | Incorrect: ${incorrectCount}`;
+        }
+        status.textContent = str;
+      }
+    }
+
+    function anwserInputChanged() {
+      
+      if (answerInput.value === answerText) {
+        const problemSeconds = (Date.now() - problemStartTime) / 1000;
+        cards[correctCount].onCompleat(problemSeconds, incorrectFlag);
+
+        ++correctCount;
+        updateStatus();
+
+        if (correctCount >= problemCount) {
+          nextState();
+        } else {
+          nextProblem();
+        }
+      } else if (!answerText.startsWith(answerInput.value)) {
+        
+        if (!incorrectFlag) {
+          incorrectFlag = true;
+          ++incorrectCount;
+          updateStatus();
+        }
+        
+        answerInput.setCustomValidity("Invalid field.");
+      } else {
+        answerInput.setCustomValidity("");
+      }
+    }
+
+
+    class ProblemSource {
+      constructor(ops, minValue, maxValue, uniquePairs) {
+        this.ops = ops;
+        this.min = minValue;
+        this.max = maxValue;
+        this.uniquePairs = uniquePairs;
+      }
+
+      *getProblemsFull() {
+        var generators = [];
+        for (const op of this.ops) {
+          generators.push(this.getProblemsOpFull(op));
+        }
+        while (generators.length > 0) {
+          var index = getRandomInt(generators.length);
+          var result = generators[index].next();
+          if (result.done) {
+            generators.splice(index, 1);
+            continue;
+          }
+          yield result.value;
+        }
+      }
+
+      *getProblems(count) {
+        var generators = [];
+        var perCount = Math.floor(count / this.ops.length);
+        var remainderCount = count %  this.ops.length;
+        for (const op of this.ops) {
+          var gCount = perCount + (remainderCount > 0 ? remainderCount-- : 0);
+          generators.push(this.getProblemsOp(op, gCount));
+        }
+
+        for (var i = 0; i < count; ++i) {
+          var result = null;
+          while (generators.length > 0) {
+            var index = getRandomInt(generators.length);
+            result = generators[index].next();
+            if (!result.done) {
+              break;
+            } else {
+              generators.splice(index, 1);
+            }
+          }
+          yield result.value;
+        }
+      }
+
+      *getProblemsOpFull(op) {
+        var pSet = this.getSourceSet(op);
+        while (pSet.length > 0) {
+          var index = getRandomInt(pSet.length);
+          var prob = pSet[index];
+          pSet.splice(index, 1);
+          yield prob;
+        }
+      }
+
+      *getProblemsOp(op, count) {
+        var pSet = null;
+
+        for (var i = 0; i < count; ++i) {
+          if (!pSet || pSet.length <= 0) {
+            pSet = this.getSourceSet(op);
+          }
+          
+          var index = getRandomInt(pSet.length);
+          var prob = pSet[index];
+          pSet.splice(index, 1);
+
+          yield prob;
+        }
+      }
+
+      getSourceSet(op) {
+        var list = [];
+
+        if (!this.uniquePairs || (op !== 'x' && op !== '+')) {
+          for (let lv = this.min; lv <= this.max; ++lv) {
+            for (let rv = this.min; rv <= this.max; ++rv) {
+              var left;
+              if (op === "/") {
+                left = lv * rv;
+              } else if (op === "-") {
+                left = lv + rv;
+              } else {
+                left = lv;
+              }
+              if (op === '/' && rv === 0) continue; // exclude div by zero
+              list.push(new Problem(op, left, rv));
+            }
+          }
+        } else {
+          for (let lv = this.min; lv <= this.max; ++lv) {
+            for (let rv = lv; rv <= this.max; ++rv) {
+              if (getRandomInt(2) === 0) {
+                list.push(new Problem(op, lv, rv));
+              } else {
+                list.push(new Problem(op, rv, lv));
+              }
+            }
+          }
+        }
+        return list;
+      }
+
+    }
+
+    function renderProblems(problems) {
+
+      function problemToTR(prob, includeTime = false) {
+        
+        var row = document.createElement('tr');
+
+        function getTD(textContent, classAttribute) {
+          var td = document.createElement('td');
+          td.setAttribute('class', classAttribute);
+          td.textContent = textContent;
+          return td;
+        }
+        
+        let c = (!prob.incorrectFlag || !includeTime) ? 'tdStat' : 'tdStat incorrect';
+        row.appendChild(getTD(prob.lv, `${c} lv`));
+        row.appendChild(getTD(operatorToChar(prob.op), c));
+        row.appendChild(getTD(prob.rv, `${c} rv`));
+
+        // 
+        // row.appendChild(getTD('=', c));
+        row.appendChild(getTD(`=\xa0${getAnswer(prob.op, prob.lv, prob.rv)}`, `${c} rv`));
+
+        // let probStr = `${prob.lv} ${operatorToChar(prob.op)} ${prob.rv}`;
+        // row.appendChild(getTD(probStr, c));
+
+        if (prob.seconds && includeTime) {
+          row.appendChild(getTD(`${prob.seconds}s`, 'tdTime'));
+        } 
+        return row;
+      }
+
+      let incorrectTable = document.getElementById('incorrectTable');
+      let timesTable =  document.getElementById('timesTable');
+      incorrectTable.innerHTML = timesTable.innerHTML = '';
+
+      let incorrectDiv = document.getElementById('incorrectDiv');
+
+      problems = [...problems];
+
+      problems.sort((a, b) => {
+        return b.seconds - a.seconds;
+      });
+
+      let hasIncorrect = false;
+      problems.forEach(p => {
+        timesTable.appendChild(problemToTR(p, true));
+        if (!p.incorrectFlag) return;
+        if (!hasIncorrect) {
+          hasIncorrect = true;
+          incorrectDiv.style.display = '';
+        }
+        incorrectTable.appendChild(problemToTR(p));
+      })
+
+      if (!hasIncorrect) {
+        incorrectDiv.style.display = 'none';
+      }
+
+    }
+
+    class Problem {
+
+      get keyPrefix() { return "fm."; }
+      get incorrectCount() { return this._incorrectCount; }
+      get history() { return this._history; }
+
+      get key() {
+        return `${this.keyPrefix}${this.lv}${this.op}${this.rv}`;
+      }
+
+      constructor(op, lv, rv) {
+        this.op = op;
+        this.lv = lv;
+        this.rv = rv;
+      }
+
+      intToHistoryItem(val) {
+        return {
+          'seconds': (val >>> 1) / 10,
+          'incorrect': (val & 1) === 1,
+        };
+      }
+      historyItemToInt(item) {
+        let secondTenths = Math.round(item.seconds * 10);
+        return (secondTenths << 1) | (+item.incorrect);
+      }
+
+      loadHistory(historyStr) {
+        if (!historyStr) {
+          this._incorrectCount = 0;
+          this._history = [];
+          return;
+        }
+
+        let vals = [];
+        for (const c of historyStr) {
+          vals.push(c.charCodeAt(0));
+        }
+        this._incorrectCount = vals[0];
+        this._history = vals.splice(1).map(v => this.intToHistoryItem(v));
+      }
+      getHistoryStr() {
+        let str = String.fromCharCode(this._incorrectCount);
+        let values = this._history.map(item => this.historyItemToInt(item));
+        return str.concat(String.fromCharCode.apply(this, values));
+      }
+      onDisplay() {
+        const historyStr = ""; // DEBUG: window.localStorage.getItem(this.key);
+        this.loadHistory(historyStr);
+      }
+      onCompleat(seconds, incorrectFlag) {
+        this.seconds = Math.round(seconds * 10) / 10;
+        this.incorrectFlag = incorrectFlag;
+        this._history.push({
+          'seconds': seconds,
+          'incorrect': incorrectFlag,
+        });
+        if (incorrectFlag) {
+          this._incorrectCount += 1;
+        }        
+        // DEBUG: const historyStr = this.getHistoryStr();
+        // DEBUG: window.localStorage.setItem(this.key, historyStr);
+      }
+      historyItemToStr() {
+        let item = this._history[this._history.length - 1];
+        return String.fromCharCode(this.lv, this.op.charCodeAt(0), this.rv, this.historyItemToInt(item));
+      }
+      loadHistoryItemStr(str) {
+        let i = 0;
+        this.lv = str.charCodeAt(i++);
+        this.op = str.substring(i++, i);
+        this.rv = str.charCodeAt(i++);
+        let item = this.intToHistoryItem(str.charCodeAt(i++));
+        this.seconds = item.seconds;
+        this.incorrectFlag = item.incorrect;
+      }
+    }
+    Problem.problemSetToStr = problems => {
+      let str = '';
+      for (const p of problems) {
+        str += p.historyItemToStr();
+      }
+      return str;
+    };
+    Problem.problemSetFromStr = str => {
+      let problems = [];
+      const fieldLength = 4;
+      for (let i = 0; i < str.length; i += fieldLength) {
+        let p = new Problem();
+        p.loadHistoryItemStr(str.substring(i,i+fieldLength));
+        problems.push(p);
+      }
+      return problems;
+    };
+
+    var cards = [];
+    var cardsIncorrectIndexes = [];
+
+    function getCards() {
+      var pSource = new ProblemSource(operators, minValue, maxValue, excludeDupPairs);
+
+      if (setType === SetTypeCount) {
+        return [...pSource.getProblems(problemCount)];
+      } else {
+        return [...pSource.getProblemsFull()];
+      }
+    }
+
+    var problemStartTime;
+    var incorrectFlag;
+    function nextProblem() {
+      incorrectFlag = false;
+
+      var lv, rv, op;
+
+      lv = cards[correctCount].lv;
+      rv = cards[correctCount].rv;
+      op = cards[correctCount].op;
+      problem.textContent = `${lv} ${operatorToChar(op)} ${rv}`;
+
+      answerText = `${getAnswer(op, lv, rv)}`;
+
+      answerInput.value = "";
+      answerInput.focus();
+      window.scrollTo(0, 0);
+
+      problemStartTime = Date.now();
+      cards[correctCount].onDisplay();
+    }
+
+    function operatorToChar(op) {
+      switch (op) {
+        case '+': return addChar;
+        case '-': return subChar;
+        case 'x': return multChar;
+        case '/': return divChar;
+        default:
+          console.log(`Unkown operator: ${op}.`);
+          return "?";
+      }
+    }
+
+    function getAnswer(op, lv, rv) {
+      switch (op) {
+        case '+':
+          return lv + rv;
+        case '-':
+          return lv - rv;
+        case 'x':
+        case '*':
+          return lv * rv;
+        case '/':
+          return lv / rv;
+        default:
+          console.log(`Unkown operator: ${op}.`);
+          return null;
+      }
+    }
+
+    function getRandomInt(max) {
+      return Math.floor(Math.random() * max);
+    }
+
+
+    var scoreHistory = null;
+    const scoreHistoryMaxLength = 75;
+    const lsHistoryKey = 'flashmath.time-next.html.history';
+
+    function isSameDay(d0, d1) {
+      return d0.getFullYear() === d1.getFullYear() &&
+      d0.getMonth() === d1.getMonth() &&
+      d0.getDate() === d1.getDate();
+    }
+
+    function formatDateTime(date) {
+      var hours = date.getHours();
+      var mins = date.getMinutes();
+      var timeStr = `${hours<10?'0':''}${hours}:${mins<10?'0':''}${mins}`;
+
+      if (isSameDay(date, new Date())) {
+        return timeStr;
+      } else {
+        return `${date.toLocaleDateString()} ${timeStr}`;
+      }
+
+    }
+
+    function settingStrToElement(paramsInfoString) {
+      var row = document.createElement('tr');
+      var tdParams = document.createElement('td');
+      tdParams.setAttribute('colspan', '3');
+      tdParams.setAttribute('class', 'tdHistorySettingsHeader');
+      tdParams.textContent = paramsInfoString;
+      row.appendChild(tdParams);
+      return row;
+    }
+
+    function scoreHistItemToElement(item) {
+      var row = document.createElement('tr');
+      
+      var tdDate = document.createElement('td');
+      tdDate.setAttribute('class', 'tdHistoryDate');
+      tdDate.textContent = formatDateTime(new Date(item.date));
+      row.appendChild(tdDate);
+
+      
+      var tdTime = document.createElement('td');
+      tdTime.setAttribute('class', 'tdHistoryTime');
+      tdTime.textContent = item.isCompleate ? `${item.time}s` : 'x';
+      row.appendChild(tdTime);
+
+      // if (item.isCompleate) {
+        var tdIncorrect = document.createElement('td');
+        tdIncorrect.setAttribute('class', 'tdHistoryIncorrect');
+        tdIncorrect.textContent = item.incorrectCount > 0 ? `-${item.incorrectCount}` : '';
+        row.appendChild(tdIncorrect);
+      // }
+
+      return row;
+    }
+
+    function renderScoreHistory(limit=50) {
+
+      document.getElementById('historyHeader').style.display = 
+        scoreHistory.length > 0 ? "block" : "none";
+
+      document.getElementById('historyShowAllLink').style.display = 
+        scoreHistory.length > limit ? "block" : "none";
+
+      var lastSettingsStr = "";
+      var table = document.getElementById('historyTable');
+      table.textContent = '';
+      for (var i = scoreHistory.length - 1; i >= 0; --i) {
+        var item = scoreHistory[i];
+        var curSettingsStr = getParamsInfoString(item.count, item.ops, item.minValue, item.maxValue, item.setType, item.xdp);
+        if (lastSettingsStr !== curSettingsStr) {
+          lastSettingsStr = curSettingsStr;
+          table.appendChild(settingStrToElement(curSettingsStr));
+        }
+        table.appendChild(scoreHistItemToElement(item));
+
+        if (--limit <= 0)
+          break;
+      }
+    }
+
+    function showAllHistory(e) {
+      e.preventDefault();
+      renderScoreHistory(scoreHistoryMaxLength);
+    }
+
+
+
+    function updateScore(seconds) {
+      const item = {
+        date: Date.now(),
+        count: problemCount,
+        ops: operators,
+        minValue: minValue,
+        maxValue: maxValue,
+        incorrectCount: incorrectCount,
+        time: seconds,
+        isCompleate: true,
+        setType: setType,
+        xdp: excludeDupPairs,
+        set: Problem.problemSetToStr(cards),
+      }
+      scoreHistory[scoreHistory.length - 1] = item;
+      storeScoreHistory();
+    }
+
+    function addNewScore() {
+      const item = {
+        date: Date.now(),
+        count: problemCount,
+        ops: operators,
+        minValue: minValue,
+        maxValue: maxValue,
+        //incorrectCount: incorrectCount,
+        //time: seconds,
+        isCompleate: false,
+        setType: setType,
+        xdp: excludeDupPairs,
+      }
+      scoreHistory.push(item);
+      storeScoreHistory();
+    }
+    function storeScoreHistory() {
+      if (scoreHistory.length > scoreHistoryMaxLength) {
+        scoreHistory = scoreHistory.slice(-scoreHistoryMaxLength);
+      }
+      window.localStorage.setItem(lsHistoryKey, JSON.stringify(scoreHistory));
+    }
+
+    function test_saveRandomScores() {
+      for (var i = 0; i < 1000; ++i) {
+        scoreHistory.push({
+          date: Date.now(),
+          count: problemCount,
+          ops: operators,
+          minValue: minValue,
+          maxValue: maxValue,
+          incorrectCount: incorrectCount,
+          time: getRandomInt(255),
+          isCompleate: true
+        });
+      }
+      storeScoreHistory();
+    }
+    function test_clearLocalStore() {
+      window.localStorage.clear();
+    }
+
+  </script>
+
+  <style>
+    body {
+      /* font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif */
+      font-family: Arial, Helvetica, sans-serif;
+    }
+  
+    #problem {
+      margin-top: 1.3em;
+      margin-bottom: 1.3em;
+      vertical-align: middle;
+      text-align: center;
+      font-size: 2.5rem;
+    }
+  
+    #answerInput {
+      text-align: center;
+      width: 5em;
+      font-size: 2rem;
+    }
+  
+    #settingsInfo {
+      font-size: 1.30rem;
+    }
+  
+    #startButton {
+      font-size: 2.5rem;
+      padding: 0.2em 1em 0.2em 1em;
+    }
+  
+    #buttonDiv {
+      text-align: center;
+    }
+  
+    #answerDiv {
+      text-align: center;
+      display: none;
+    }
+  
+    #answerInput::-webkit-outer-spin-button,
+    #answerInput::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  
+    #answerInput[type=number] {
+      -moz-appearance: textfield;
+    }
+  
+    #answerInput:invalid {
+      color: red;
+    }
+  
+    #answerInput:valid {
+      color: black;
+    }
+  
+    #mainContent {
+      display: none;
+    }
+  
+    #menue {
+      width: 100%;
+      min-height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      background: white;
+      display: none;
+    }
+  
+    #menueContent {
+      display: table;
+      margin-left: auto;
+      margin-right: auto;
+      font-size: 1.25rem;
+    }
+  
+  
+    #menueContent ul {
+      list-style-type: none;
+      padding: 0;
+      margin-top: 0;
+    }
+  
+    #menueContent li, #menueContent div {
+      margin: 0em 0em 0.6em 0em;
+    }
+
+    #menueSettingsInfo {
+      /* background-color: aqua; */
+      margin: 0em 0em 0.6em 0em;
+    }
+
+
+    .settingsOption {
+      padding-left: 1em;
+    }
+  
+    #menueContent a {
+      margin: 0em 0.25em 0em 0.25em;
+    }
+  
+    #inputCount {
+      text-align: center;
+      margin: 0em 0.25em 0em 0.25em;
+      width: 3em;
+      font-size: inherit;
+    }
+  
+    #menuReloadButton {
+      font-size: inherit;
+    }
+  
+  
+    #menueContent a:link, #menueContent a:visited {
+      color: black;
+    }
+  
+    .statusHeader {
+      user-select: none;
+      padding: 0 0.3em;
+      padding-top: 0.2em;
+      font-size: 1.25rem;
+    }
+    #statusSpan {
+      padding-left: 0.2em;
+      color: rgb(100, 100, 100);
+      font-size: 90%;
+    }
+    #menueOpen, #menueClose {
+      font-size: 1.4rem;
+    }
+  
+    #historyDiv {
+      margin: 1em 0;
+    }
+  
+    #historyHeader {
+      display: none;
+      font-weight: bold;
+      margin-bottom: 0.25em;
+    }
+  
+    .tdHistorySettingsHeader {
+      padding-top: 0.3em;
+      white-space: nowrap;
+    }
+  
+    .tdHistoryDate {
+      color: darkgray;
+      padding-left: 0.4em;
+    }
+  
+    .tdHistoryTime {
+      padding-left: 0.58em;
+    }
+  
+    #debugDiv {
+      display: none;
+      margin: 1rem;
+    }
+
+    /**** Exercise results ****/
+    #resultsDiv {
+      margin-top: 1.5em;
+      margin-left: 0.5em;
+      margin-right: 0.5em;
+      font-size: 1.3rem;
+    }
+    #resultsDiv p {
+      margin: 0.2em 0 0.2em 0;
+      /* font-weight: bold; */
+    }
+    #resultsDiv .lv { text-align: right;}
+    #resultsDiv .rv { text-align: left;}
+    #resultsDiv .ev { text-align: center;}
+    #resultsDiv .tdStat {
+      /* text-align: center; */
+      padding: 1px 0.1em;
+    }
+    #resultsDiv .tdTime {
+      color: darkgray;
+      padding-left: 0.1em;
+      font-size: 90%;
+    }
+    #resultsDiv .incorrect {
+      /* color: rgb(161, 0, 0); */
+      background-color: rgba(150, 2, 2, 0.247);
+    }
+    #resultsDiv tr {
+      column-span: none;
+    }
+    #resultsDiv table {
+      margin-left:auto; 
+      margin-right:auto;
+      border-collapse:collapse;
+    }
+
+  </style>
+</head>
+
+<body onload="onLoad();">
+
+  <div id="mainContent">
+    <div class="statusHeader">
+      <span style="float: left;">
+        <span id="statusSpan"></span>
+        <!-- layout hack -->
+        <span style="user-select: none; color: transparent;">&#10247;</span>
+      </span>
+      <span id="menueOpen" style="float: right;margin-right: -0.1em;">&#10247;</span>
+    </div>
+    <div style="clear: both; padding-top: 1px;">
+      <p id="problem"></p>
+    
+      <div id="buttonDiv">
+        <p id="settingsInfo"></p>
+        <button id="startButton">Start</button>
+      </div>
+    
+      <div id="answerDiv">
+        <input id="answerInput" placeholder="Answer" type="number" inputmode="numeric" pattern="\d*" autocomplete="off" />
+      </div>
+
+      <div id="resultsDiv">
+        <div id="incorrectDiv">
+          <p>Incorrect</p>
+          <div style="column-width: 7em;column-count: 3;">
+            <table id="incorrectTable"></table>
+          </div>
+        </div>
+        <div id="timesDiv">
+          <p>Results</p>
+          <div style="column-width: 7em;column-count: 3;">
+            <table id="timesTable"></table>
+          </div>
+        </div>
+      </div>
+    
+      <div id="debugDiv">
+        <button onclick="test_saveRandomScores();">Gen Test Data</button>
+        <button onclick="test_clearLocalStore();">Clear Local Store</button>
+        <button onclick="nextState();">Next State</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="menue">
+    <div id="menueBody" style="margin: 8px;">
+      <div class="statusHeader">
+        <span style="float: left;"></span>
+        <span id="menueClose" style="float: right;" >&#10006;</span>
+      </div>
+    
+      <div id="menueContent" style="clear: both; padding-top: 1px;">
+        <p id="menueSettingsInfo">Test</p>
+        <ul id="settingsLinks">
+          <li>
+            <div>
+              <input type="radio" id="rbAll" name="sType" value="all">
+              <label for="rbAll">All Problems</label>
+            </div>
+            <div class="settingsOption">
+              <input type="checkbox" id="chkExcludeDups" name="sTypeExcludeDups">
+              <label for="chkExcludeDups">
+                Unique <br>
+                <span style="color: rgb(128, 128, 128); font-size: 80%;">
+                  Excludes duplicate pairs for + &times;
+                </span>
+              </label>
+            </div>
+            <div>
+              <input type="radio" id="rbCount" name="sType" value="count">
+              <label for="rbCount">Custom Count:</label>
+              <input id="inputCount" type="number" min="1" inputmode="numeric" pattern="\d*" autocomplete="off" />
+            </div>
+            <!-- <div style="text-align: right; padding-right: 3em;"> -->
+            <div>
+              <button id="menuReloadButton" onclick="menuReloadButton();">Reload</button>
+            </div>          
+          </li>
+          <li>Addition:
+            <a href="?vrange=2,12&ops=add">2-12</a> |
+            <a href="?vrange=2,24&ops=add">2-24</a>
+          </li>
+          <li>Subtraction:
+            <a href="?vrange=2,12&ops=sub">2-12</a> |
+            <a href="?vrange=2,24&ops=sub">2-24</a>
+          </li>
+          <li>Multiplication:
+            <a href="?vrange=2,9&ops=mult">2-9</a> |
+            <a href="?vrange=6,9&ops=mult">6-9</a> |
+            <a href="?vrange=2,12&ops=mult">2-12</a>
+          </li>
+          <li>Division:
+            <a href="?vrange=2,9&ops=div">2-9</a> |
+            <a href="?vrange=6,9&ops=div">6-9</a> |
+            <a href="?vrange=2,12&ops=div">2-12</a>
+          </li>
+          <li>All operators:
+            <a href="?vrange=2,9&ops=add,sub,mult,div">2-9</a> |
+            <!-- <a href="?vrange=6,9&ops=add,sub,mult,div">6-9</a> | -->
+            <a href="?vrange=2,12&ops=add,sub,mult,div">2-12</a>
+          </li>
+          <li>Add and Sub:
+            <a href="?vrange=2,24&ops=add,sub">2-24</a> |
+            <a href="?vrange=2,36&ops=add,sub">2-36</a>
+          </li>
+          <li>Mult and Div:
+            <a href="?vrange=2,9&ops=mult,div">2-9</a> |
+            <a href="?vrange=2,12&ops=mult,div">2-12</a>
+          </li>
+        </ul>
+    
+        <div id="historyDiv">
+          <span id="historyHeader">History</span>
+          <table id="historyTable">
+          </table>
+          <a id="historyShowAllLink">Show all</a>
+        </div>
+    
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>
