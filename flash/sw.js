@@ -1,4 +1,4 @@
-const CACHE_NAME = "flash-math-cache-v2";
+const CACHE_NAME = "flash-math-cache-v3";
 const urlsToCache = [
     ".",
     "index.html",
