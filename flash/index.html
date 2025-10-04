@@ -7,6 +7,7 @@
 
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1976d2">
+  <link rel="apple-touch-icon" href="icon-any-180.png">
 
   <script>
     'use strict';
@@ -60,6 +61,12 @@
             document.getElementById('answerDiv').style.display = "block";
             
             setParamsFromURL();
+
+            // HACK: any programatic setting of the pattern attribute appears to 
+            // prevnt safari on iOS from showing numeric keypad (which has no way to input negitve nubmer). 
+            if (minValue < 0 || maxValue < 0)
+                answerInput.setAttribute("pattern", "-+\d*");
+
             cards = getCards();
             problemCount = cards.length;
             
@@ -112,8 +119,16 @@
     const defaultMax = 9;
     const defaultOps = "x";
     const defaultCount = 36;
-    const defaultSetType = SetTypeCount;
+    const defaultSetType = "count";
     const defaultExcludeDupPairs = true;
+
+    const paramVals = "vals";
+    const paramValsDelimiter = "..";
+    const paramCount = "n";
+    const paramExcludeDupPairs = "xdp";
+    const paramOps = "ops";
+    const paramStype = "stype";
+
 
     // Unicode math operator chars
     const addChar  = "\u002B";
@@ -128,7 +143,27 @@
     var setType = defaultSetType;
     var excludeDupPairs = defaultExcludeDupPairs;
 
-
+    function updateSeachParams(searchParams) {
+      var count = inputCount.value;
+      var st = document.querySelector('#menueContent input[name="sType"]:checked').value;
+      var xdp = document.getElementById('chkExcludeDups').checked;
+      
+      if (st === SetTypeAll || count === defaultCount.toString()) {
+        searchParams.delete(paramCount);
+      } else {
+        searchParams.set(paramCount, count);
+      }
+      if (st === defaultSetType) {
+        searchParams.delete(paramStype); 
+      } else {
+        searchParams.set(paramStype, st);
+      }
+      if (xdp === defaultExcludeDupPairs) {
+        searchParams.delete(paramExcludeDupPairs); 
+      } else {
+        searchParams.set(paramExcludeDupPairs, xdp);
+      }
+    }
 
     function menuOpen(e) {
       renderScoreHistory();
@@ -141,40 +176,26 @@
     }
     function menuLinkClick(e) {
       e.preventDefault();
-
-      var count = inputCount.value;
-      var st = document.querySelector('#menueContent input[name="sType"]:checked').value;
-      var xdp = document.getElementById('chkExcludeDups').checked;
-      
       var href = e.target.getAttribute("href");
       var searchParams = new URLSearchParams(href);
-      searchParams.set("count", count);
-      searchParams.set("stype", st);
-      searchParams.set("xdp", xdp);
+      updateSeachParams(searchParams);
       window.location.href = `?${searchParams.toString()}`;
     }
     function menueChange(e) {
-      var count = inputCount.value;
-      var st = document.querySelector('#menueContent input[name="sType"]:checked').value;
-      var xdp = document.getElementById('chkExcludeDups').checked;
-
       var searchParams = new URLSearchParams(window.location.search);
-      searchParams.set("count", count);
-      searchParams.set("stype", st);
-      searchParams.set("xdp", xdp);
-      var newQStr = searchParams.toString();
-      if(history.replaceState) {
-          window.history.replaceState(null, null, `?${newQStr}`);
+      updateSeachParams(searchParams);
+      if (history.replaceState) {
+          window.history.replaceState(null, null, `?${searchParams.toString()}`);
       }
       menuUpdateSettingsInfo();
     }
-    function menuReloadButton() {
+    function menuReloadButtonClick() {
       if (!window.location.search) {
-        window.location.href = `?count=${inputCount.value}`;
+        console.assert(false);
+        window.location.href = `?${paramVals}=${defaultMin}${paramValsDelimiter}${defaultMax}`;
       } else {
         window.location.reload();
       }
-
     }
 
     function onLoad() {
@@ -212,7 +233,7 @@
 
       inputCount.addEventListener('keydown', event => {
         if (event.key === "Enter") {
-          menuReloadButton();
+          menuReloadButtonClick();
         }
       });
       inputCount.addEventListener('focus', e =>{
@@ -233,7 +254,7 @@
         if (state === StateReady || state === StateFinished) {
           startButton.focus();
         } else if (state === StateRunning) {
-          answerInput.focus();
+          answerInput.focus({ preventScroll: true });
         } else if (state === -1) {
           setState(StateReady);
         }
@@ -260,6 +281,7 @@
       
       if (window.location.hash === "#debug") {
         document.getElementById('debugDiv').style.display = "block";
+        document.getElementById('menueOpen').onclick(); // TEMP: working
       }
       
     }
@@ -268,35 +290,57 @@
       let p = {};
       let searchParams = new URLSearchParams(window.location.search);
 
-      let vrange = searchParams.get("vrange") || `${defaultMin},${defaultMax}`;
-      let vrParts = vrange.split(",");
+      let vrange = searchParams.get(paramVals) || searchParams.get("vrange") || `${defaultMin}${paramValsDelimiter}${defaultMax}`;
+      let vrParts;
+      if (vrange.includes(paramValsDelimiter)) {
+        vrParts = vrange.split(paramValsDelimiter);
+      } else { // Fallback for old comma format-
+        vrParts = vrange.split(",");
+      }
       p.minValue = parseInt(vrParts[0]); if (isNaN(p.minValue)) p.minValue = defaultMin;
-      p.maxValue = parseInt(vrParts[1]); if (isNaN(p.maxValue)) p.minValue = defaultMax;
-      let ops = searchParams.get("ops"); // "add,mult,sub,div";
+      p.maxValue = parseInt(vrParts[1]); if (isNaN(p.maxValue)) p.maxValue = defaultMax;
+      
+      let ops = searchParams.get(paramOps);
       p.operators = "";
       if (ops) {
-        let opsParts = ops.split(",");
-        for (const e of opsParts) {
-          switch (e) {
-            case "add":  p.operators += "+"; break;
-            case "mult": p.operators += "x"; break;
-            case "sub":  p.operators += "-"; break;
-            case "div":  p.operators += "/"; break;
-            default: break;
+        // Check for old comma-separated format
+        if (ops.includes(',')) {
+          let opsParts = ops.split(",");
+          for (const e of opsParts) {
+            switch (e) {
+              case "add":  p.operators += "+"; break;
+              case "mult": p.operators += "x"; break;
+              case "sub":  p.operators += "-"; break;
+              case "div":  p.operators += "/"; break;
+              default: break;
+            }
+          }
+        } else { // New single-string format
+          for (const char of ops) {
+            switch (char) {
+              case 'a': p.operators += "+"; break;
+              case 's': p.operators += "-"; break;
+              case 'm': p.operators += "x"; break;
+              case 'd': p.operators += "/"; break;
+              default: break;
+            }
           }
         }
       }
+
       if (p.operators === "") {
         p.operators = defaultOps;
       }
-      p.setType = searchParams.get("stype") || defaultSetType;
-      p.problemCount = searchParams.get("count") || defaultCount;
-      let xdpStr = searchParams.get("xdp");
-      p.excludeDupPairs = xdpStr ? searchParams.get("xdp") === 'true' : defaultExcludeDupPairs;
+      // If stype absent but n exists, assume stype=count
+      p.setType = searchParams.get(paramStype) || (searchParams.get(paramCount) ? "count" : defaultSetType);
+      p.problemCount = searchParams.get(paramCount) || defaultCount;
+      let xdpStr = searchParams.get(paramExcludeDupPairs);
+      p.excludeDupPairs = xdpStr ? searchParams.get(paramExcludeDupPairs) === 'true' : defaultExcludeDupPairs;
 
       return p;
     }
 
+    // Updates text that describes current problem settings (e.g. "Auto | + − × ÷ | 2 to 24")
     function menuUpdateSettingsInfo() {
       let info = document.getElementById('menueSettingsInfo');
       let p = getParamsFromURL();
@@ -308,8 +352,8 @@
     function setParamsFromURL() {
       let p = getParamsFromURL();
       
-      minValue = p.minValue;
-      maxValue = p.maxValue;
+      minValue = Math.min(p.minValue, p.maxValue);
+      maxValue = Math.max(p.minValue, p.maxValue);
       operators = p.operators;
       setType = p.setType;
       problemCount =  p.problemCount;
@@ -374,9 +418,11 @@
           updateStatus();
         }
         
-        answerInput.setCustomValidity("Invalid field.");
+        answerInput.classList.remove('nutural');
+        answerInput.classList.add('incorrect');
       } else {
-        answerInput.setCustomValidity("");
+        answerInput.classList.remove('incorrect');
+        answerInput.classList.add('nutural');
       }
     }
 
@@ -672,7 +718,7 @@
       answerText = `${getAnswer(op, lv, rv)}`;
 
       answerInput.value = "";
-      answerInput.focus();
+      answerInput.focus({ preventScroll: true });
       window.scrollTo(0, 0);
 
       problemStartTime = Date.now();
@@ -890,7 +936,7 @@
   
     #startButton {
       font-size: 2.5rem;
-      padding: 0.2em 1em 0.2em 1em;
+      padding: 0.2em 1em 0.2em 1em; /* ignored on Safari it seems but not on chrome  */
     }
   
     #buttonDiv {
@@ -912,11 +958,11 @@
       -moz-appearance: textfield;
     }
   
-    #answerInput:invalid {
+    #answerInput.incorrect {
       color: red;
     }
   
-    #answerInput:valid {
+    #answerInput.nutural {
       color: black;
     }
   
@@ -939,6 +985,8 @@
       margin-left: auto;
       margin-right: auto;
       font-size: 1.25rem;
+      /* width: 94vw;
+      max-width: 22em; */
     }
   
   
@@ -948,8 +996,22 @@
       margin-top: 0;
     }
   
-    #menueContent li, #menueContent div {
-      margin: 0em 0em 0.6em 0em;
+    #menueContent div {
+      margin-bottom: 0.6em;
+    }
+
+    #menueContent li .op-symbol {
+      display: inline-block;
+      width: 3.3em;
+      text-align: center;
+      font-size: 1.25em;
+      margin-bottom: 0.2em; 
+      margin-right: 0.0em;
+    }
+    @media (min-width: 20rem) {
+      #menueContent li .op-symbol {
+        margin-right: 0.4em;  /* Increase space between columns */
+      }
     }
 
     #menueSettingsInfo {
@@ -979,7 +1041,7 @@
   
   
     #menueContent a:link, #menueContent a:visited {
-      color: black;
+      color: dimgray;
     }
   
     .statusHeader {
@@ -1085,7 +1147,9 @@
       </div>
     
       <div id="answerDiv">
-        <input id="answerInput" placeholder="Answer" type="number" inputmode="numeric" pattern="\d*" autocomplete="off" />
+        <!-- <input id="answerInput" placeholder="Answer" type="number" inputmode="numeric" pattern="\d*" autocomplete="off" /> -->
+        <!-- Old iPhone SE would not show numpad when inputmode="numeric" included as atribute  -->
+        <input id="answerInput" placeholder="Answer" type="number"                     pattern="\d*" autocomplete="off" />
       </div>
 
       <div id="resultsDiv">
@@ -1115,7 +1179,7 @@
     <div id="menueBody" style="margin: 8px;">
       <div class="statusHeader">
         <span style="float: left;"></span>
-        <span id="menueClose" style="float: right;" >&#10006;</span>
+        <span id="menueClose" style="float: right;">&#10006;</span>
       </div>
     
       <div id="menueContent" style="clear: both; padding-top: 1px;">
@@ -1142,40 +1206,55 @@
             </div>
             <!-- <div style="text-align: right; padding-right: 3em;"> -->
             <div>
-              <button id="menuReloadButton" onclick="menuReloadButton();">Reload</button>
+              <button id="menuReloadButton" onclick="menuReloadButtonClick();">Reload</button>
             </div>          
           </li>
-          <li>Addition:
-            <a href="?vrange=2,12&ops=add">2-12</a> |
-            <a href="?vrange=2,24&ops=add">2-24</a>
-          </li>
-          <li>Subtraction:
-            <a href="?vrange=2,12&ops=sub">2-12</a> |
-            <a href="?vrange=2,24&ops=sub">2-24</a>
-          </li>
-          <li>Multiplication:
-            <a href="?vrange=2,9&ops=mult">2-9</a> |
-            <a href="?vrange=6,9&ops=mult">6-9</a> |
-            <a href="?vrange=2,12&ops=mult">2-12</a>
-          </li>
-          <li>Division:
-            <a href="?vrange=2,9&ops=div">2-9</a> |
-            <a href="?vrange=6,9&ops=div">6-9</a> |
-            <a href="?vrange=2,12&ops=div">2-12</a>
-          </li>
-          <li>All operators:
-            <a href="?vrange=2,9&ops=add,sub,mult,div">2-9</a> |
-            <!-- <a href="?vrange=6,9&ops=add,sub,mult,div">6-9</a> | -->
-            <a href="?vrange=2,12&ops=add,sub,mult,div">2-12</a>
-          </li>
-          <li>Add and Sub:
-            <a href="?vrange=2,24&ops=add,sub">2-24</a> |
-            <a href="?vrange=2,36&ops=add,sub">2-36</a>
-          </li>
-          <li>Mult and Div:
-            <a href="?vrange=2,9&ops=mult,div">2-9</a> |
-            <a href="?vrange=2,12&ops=mult,div">2-12</a>
-          </li>
+          <li><span class="op-symbol">+</span>
+                <span class="value-range">
+                <a href="?vals=2..12&ops=a">2-12</a> |
+                <a href="?vals=2..24&ops=a">2-24</a>
+                </span>
+            </li>
+            <li><span class="op-symbol">−</span>
+                <span class="value-range">
+                <a href="?vals=2..12&ops=s">2-12</a> |
+                <a href="?vals=2..24&ops=s">2-24</a>
+                </span>
+            </li>
+            <li><span class="op-symbol">×</span>
+                <span class="value-range">
+                <a href="?vals=2..9&ops=m">2-9</a> |
+                <a href="?vals=6..9&ops=m">6-9</a> |
+                <a href="?vals=2..12&ops=m">2-12</a>
+                </span>
+            </li>
+            <li><span class="op-symbol">÷</span>
+                <span class="value-range">
+                <a href="?vals=2..9&ops=d">2-9</a> |
+                <a href="?vals=6..9&ops=d">6-9</a> |
+                <a href="?vals=2..12&ops=d">2-12</a> 
+                </span>
+            </li>
+            <li><span class="op-symbol">+ − × ÷</span>
+                <span class="value-range">
+                <a href="?vals=2..9&ops=asmd">2-9</a> |
+                <a href="?vals=2..12&ops=asmd">2-12</a> |
+                <a href="?vals=2..24&ops=asmd">2-24</a>
+                </span>
+            </li>
+            <li><span class="op-symbol">+ −</span>
+                <span class="value-range">
+                <a href="?vals=2..24&ops=as">2-24</a> |
+                <a href="?vals=2..36&ops=as">2-36</a>
+                </span>
+            </li>
+            <li><span class="op-symbol">× ÷</span>
+                <span class="value-range">
+                <a href="?vals=2..9&ops=md">2-9</a> |
+                <a href="?vals=2..12&ops=md">2-12</a> |
+                <a href="?vals=2..24&ops=md">2-24</a>
+                </span>
+            </li>
         </ul>
     
         <div id="historyDiv">

@@ -1,9 +1,11 @@
-const CACHE_NAME = "flash-math-cache-v1";
+const CACHE_NAME = "flash-math-cache-v2";
 const urlsToCache = [
     ".",
     "index.html",
     "manifest.json",
-    "icon-512.png",
+    "icon-any-512.png",
+    "icon-maskable-512.png",
+    "icon-any-180.png"
 ];
 
 // Install event: Caching static assets
