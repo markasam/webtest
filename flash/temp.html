@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Challenge</title>
+    <style>
+        :root {
+            --primary-bg-color: #f0f2f5;
+            --container-bg-color: #ffffff;
+            --primary-text-color: #333333;
+            --secondary-text-color: #6c757d;
+            --incorrect-color: #dc3545;
+            --border-color: #ced4da;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--primary-bg-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: var(--container-bg-color);
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+
+        .problem-container {
+            margin-bottom: 25px;
+        }
+
+        #infix-problem {
+            font-size: 2.1rem;
+            font-weight: bold;
+            color: var(--primary-text-color);
+            margin-bottom: 20px;
+            word-wrap: break-word;
+            min-height: 50px;
+        }
+
+        #answer-input {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.6rem;
+            border-radius: 5px;
+            border: 2px solid var(--border-color);
+            box-sizing: border-box;
+            text-align: center;
+            transition: border-color 0.3s;
+        }
+
+        #answer-input:focus {
+            outline: none;
+            border-color: #80bdff;
+        }
+
+        #answer-input.incorrect {
+            border-color: var(--incorrect-color);
+        }
+
+        .postfix-details {
+            margin-top: 30px;
+            font-size: 1.0rem;
+            color: var(--secondary-text-color);
+        }
+
+        #postfix-problem {
+            font-family: monospace;
+            background-color: #e9ecef;
+            padding: 5px 8px;
+            border-radius: 4px;
+            word-wrap: break-word;
+        }
+
+        /* Responsive adjustments for smaller screens */
+        @media (max-width: 480px) {
+            #infix-problem {
+                font-size: 1.6rem;
+            }
+            #answer-input {
+                font-size: 1.4rem;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="problem-container">
+            <div id="infix-problem"></div>
+            <input type="text" inputmode="numeric" pattern="[0-9]*" id="answer-input" placeholder="Answer">
+        </div>
+        
+        <div class="postfix-details">
+            <div id="postfix-problem"></div>
+        </div>
+    </div>
+
+    <script>
+        const infixProblemElement = document.getElementById('infix-problem');
+        const postfixProblemElement = document.getElementById('postfix-problem');
+        const answerInputElement = document.getElementById('answer-input');
+
+        // --- Configuration ---
+        const config = {
+            operators: ['+', '−', '×', '÷'], // ['÷'], //['+', '−', '×', '÷'],
+            
+            operatorPrecedence: {    '+': 1,      '−': 1,      '×': 2,      '÷': 2,     },
+            operatorAssociativity: { '+': 'left', '−': 'left', '×': 'left', '÷': 'left' },
+            fullyAssociative: {      '+': true,   '−': false,  '×': true,   '÷': false  },
+
+            valueRange: { min: 2, max: 9 },
+            operatorCountRange: { min: 2, max: 3 },
+            maxAnswerValue: 512,
+            preventNegativeResults: true,
+            orderOfOperationsSensitive: true
+        };
+        // -------------------
+
+        let correctAnswer = 0;
+        
+        function getRandomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+        function getRandOpperator() {
+            return config.operators[getRandomInt(0, config.operators.length - 1)];
+        }
+
+
+        // MAS: Simple random problem generator (no special case for div or sub)
+        function generateProblem() {
+            
+            while (true) {
+                const opCount = getRandomInt(config.operatorCountRange.min, config.operatorCountRange.max);
+                
+                const ops = Array.from({ length: opCount }, () => getRandOpperator());
+                const vals = Array.from({ length: opCount+1 }, () => getRandomInt(config.valueRange.min, config.valueRange.max));
+                let postfix = [];
+                
+                postfix.push(vals.pop(), vals.pop());
+                let curMaxOps = 1;
+
+                while(vals.length > 0) {
+                    if (curMaxOps > 0 && Math.random() < 0.5) {
+                        postfix.push(ops.pop());
+                        --curMaxOps;
+                    } else {
+                        postfix.push(vals.pop());
+                    }
+                }
+
+                postfix.push(...ops);
+
+                // HACK: Opertunisiticly construct larger divisions and subtractions when operands 
+                // are both numbers rather than the result of other expressions
+                for (let i = 2; i < postfix.length; i++) {
+                    const t = postfix[i];
+                    if (typeof postfix[i-1] === 'number' && typeof postfix[i-2] === 'number') {
+                        if (t === '÷') { 
+                            // (a ÷ b) --> (ab ÷ b)
+                            let valA = postfix[i-2];
+                            let valB = postfix[i-1];
+                            postfix[i-2] = valA * valB;
+                        } else if (t === '−') {
+                            // (a − b) --> (a+b − b)
+                            let valA = postfix[i-2];
+                            let valB = postfix[i-1];
+                            postfix[i-2] = valA + valB;
+                        }
+                    }
+                }
+
+                try {
+                    const finalAnswer = evaluatePostfix(postfix);
+                    if (Number.isInteger(finalAnswer) && isFinite(finalAnswer)
+                        && Math.abs(finalAnswer) <= config.maxAnswerValue
+                        && (!config.preventNegativeResults || finalAnswer >= 0)) {
+                        correctAnswer = finalAnswer;
+                        return postfix; // Success
+                    }
+                } catch (error) {
+                    // Catch errors like division by zero and let the loop retry
+                    console.log(`generateProblem(): regen\n`);
+                }
+            }
+        }
+        
+
+        /**
+         * Evaluates a postfix expression.
+         */
+        function evaluatePostfix(postfix) {
+            const stack = [];
+            for (const token of postfix) {
+                if (typeof token === 'number') {
+                    stack.push(token);
+                } else {
+                    const b = stack.pop();
+                    const a = stack.pop();
+                    if (token === '÷' && b === 0) throw new Error('Division by zero');
+                    
+                    switch (token) {
+                        case '+': stack.push(a + b); break;
+                        case '−': stack.push(a - b); break;
+                        case '×': stack.push(a * b); break;
+                        case '÷': stack.push(a / b); break;
+                    }
+                }
+            }
+            return stack[0];
+        }
+
+        /**
+         * Converts a postfix expression to an infix expression with minimal necessary parentheses.
+         *
+         * @param {Array<string|number>} postfix The postfix expression as an array of tokens.
+         * @returns {string} The resulting infix expression.
+         */
+        function convertPostfixToInfix(postfix) {
+            const stack = [];
+            for (const token of postfix) {
+                if (typeof token === 'number') {
+                    // Numbers are treated with the highest precedence.
+                    stack.push({ expr: token.toString(), prec: 99 });
+                } else {
+                    const opPrec = config.operatorPrecedence[token];
+                    const opAssoc = config.operatorAssociativity[token];
+
+                    const b = stack.pop();
+                    const a = stack.pop();
+
+                    // Parenthesize the left operand if its operator has a lower precedence.
+                    let exprA = a.expr;
+                    if (a.prec < opPrec) {
+                        exprA = `(${a.expr})`;
+                    }
+
+                    let exprB = b.expr;
+                    // Parenthesize the right operand if its operator has a lower precedence.
+                    if (b.prec < opPrec) {
+                        exprB = `(${b.expr})`;
+                    }
+                    // Also parenthesize the right operand if precedences are equal AND the
+                    // current operator is left-associative. 
+                    else if (b.prec === opPrec && opAssoc === 'left') {
+                        if (!config.fullyAssociative[token]) {
+                            exprB = `(${b.expr})`;
+                        }
+                    }
+
+                    stack.push({ expr: `${exprA} ${token} ${exprB}`, prec: opPrec });
+                }
+            }
+            return stack[0].expr;
+        }
+
+        /**
+         * Displays a new problem.
+         */
+        function displayNewProblem() {
+            const postfixProblem = generateProblem();
+
+            infixProblemElement.textContent = convertPostfixToInfix(postfixProblem);
+            postfixProblemElement.textContent = `${postfixProblem.join(' ')}`;
+            
+            answerInputElement.value = '';
+            answerInputElement.classList.remove('incorrect');
+            answerInputElement.focus();
+        }
+
+        /**
+         * Checks the user's answer as they type.
+         */
+        function handleInput() {
+
+            const userAnswer = answerInputElement.value;
+            const correctAnswerStr = correctAnswer.toString();
+
+            if (userAnswer === correctAnswerStr) {
+                answerInputElement.classList.remove('incorrect');
+                displayNewProblem(); 
+            } else if (correctAnswerStr.startsWith(userAnswer)) {
+                answerInputElement.classList.remove('incorrect');
+            } else {
+                answerInputElement.classList.add('incorrect');
+            }
+        }
+
+        answerInputElement.addEventListener('input', handleInput);
+        
+
+        if (window.location.hash === '#debug') {
+            answerInputElement.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    displayNewProblem();
+                    event.preventDefault(); 
+                }
+            });
+        }
+        if (window.location.hash === '#test') {
+            testInfixConversion(5000);
+        }
+
+        document.addEventListener('DOMContentLoaded', displayNewProblem);
+
+
+    </script>
+</body>
+</html>
