@@ -20,17 +20,17 @@
             font-family: var(--font-family);
             background-color: var(--primary-bg-color);
             margin: 0;
-            padding: 20px;
+            padding: 30px 15px;
             display: flex;
-            justify-content: center;
-            align-items: flex-start;
+            flex-direction: column;
+            align-items: center;
             min-height: 100vh;
-            box-sizing: border-box;
+            box-sizing: border-box; 
         }
 
         .container {
             background-color: var(--container-bg-color);
-            padding: 25px;
+            padding: 15px;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             max-width: 450px;
@@ -41,17 +41,26 @@
             text-align: center;
         }
 
-        .problem-container {
-            margin-bottom: 25px;
+        .problem-set-description {
+            margin: 0.5rem 0;
+            width: 100%;
         }
 
-        #infix-problem {
-            font-size: 2.1rem;
+        #start-button {
+            margin-top: 1.0rem;
+        }
+
+        .problem-container {
+            /* margin-bottom: 25px; */
+        }
+
+        #problem {
+            font-size: 1.9rem;
             font-weight: bold;
             color: var(--primary-text-color);
-            margin-bottom: 20px;
+            margin: 20px 0;
             word-wrap: break-word;
-            min-height: 50px;
+            /* min-height: 50px; */
         }
 
         .input-area {
@@ -98,15 +107,15 @@
             opacity: 1;
             pointer-events: auto; /* Allow clicks when visible */
         }
-        
         #skip-button:hover {
             background-color: #5a6268;
         }
 
         .postfix-details {
-            margin-top: 30px;
+            margin-top: 10px;
             font-size: 1.0rem;
             color: var(--secondary-text-color);
+            max-width: 450px;
         }
 
         #postfix-problem {
@@ -121,22 +130,19 @@
             width: 100%;
             display: flex;
             justify-content: flex-start;
-            align-items: center;
-            margin: -10px 0 1rem -15px; /* Pulled to top-left */
+            /* align-items: center; */
             color: var(--secondary-text-color);
         }
         
-        .start-screen, .results-screen {
+        .start-screen, .problem-screen, .results-screen {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: flex-start; /* Changed to prevent layout shift */
             text-align: center;
+            min-height: 220px;
         }
 
-        .start-screen {
-            padding: 4rem 0; /* Added padding to vertically space the content */
-        }
 
         .results-screen h2 {
             margin: 1.5rem 0; /* Equal space above and below */
@@ -146,68 +152,26 @@
         .results-screen h3 {
             text-align: left;
             width: 100%;
-            margin: 1.5rem 0 0.5rem; /* Closer to list */
+            margin: 1rem 0 0;
         }
-
-        .problem-set-description {
-            margin-bottom: 0.5rem; /* Closer to button */
-            width: 100%;
-        }
-        
-        /* --- START: New Description Styles --- */
-        .description {
-            display: flex;
-            justify-content: center;
-            align-items: baseline;
-            text-align: center;
-            font-size: 1.4rem;
-            font-weight: 500;
-            color: #333;
-            white-space: nowrap;
-            overflow-x: auto;
-            padding-bottom: 5px;
-        }
-        
-        .description .separator {
-            font-weight: 300;
-            color: #ced4da;
-        }
-        
-        .ranged-stat {
-            display: inline-flex;
-            flex-direction: column;
-            text-align: center;
-            line-height: 1.1;
-        }
-        
-        .ranged-stat .value {
-            font-size: 1.2rem;
-            font-weight: 500;
-        }
-
-        .ranged-stat .label {
-            font-size: 0.55rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            color: #6c757d;
-            letter-spacing: 0.5px;
-            margin-top: 2px;
-        }
-        /* --- END: New Description Styles --- */
-
 
         .results-list {
             list-style: none;
             padding: 0;
             width: 100%;
-            max-height: 300px;
+            /* max-height: 300px; */
             overflow-y: auto;
             border: 1px solid #dee2e6;
             border-radius: 8px;
         }
 
+         .results-list {
+            margin-block-start: 0.5rem;
+            margin-block-end: 0;
+         }
+
         .results-list li {
-            padding: 0.75rem 1rem;
+            padding: 0.6rem 0.75rem;
             display: flex;
             justify-content: flex-start;
             align-items: baseline;
@@ -257,11 +221,57 @@
         button:hover {
             background-color: #0056b3;
         }
+        
+        /* --- START: New Description Styles --- */
+        .description {
+            display: flex;
+            justify-content: center;
+            align-items: baseline;
+            text-align: center;
+            font-size: 1.4rem;
+            font-weight: 500;
+            color: #333;
+            white-space: nowrap;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+        
+        .description .separator {
+            font-weight: 300;
+            color: #ced4da;
+        }
+        
+        .ranged-stat {
+            display: inline-flex;
+            flex-direction: column;
+            text-align: center;
+            line-height: 1.1;
+        }
+        
+        .ranged-stat .value {
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
 
-        /* Responsive adjustments for smaller screens */
+        .ranged-stat .label {
+            font-size: 0.55rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #6c757d;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+        /* --- END: New Description Styles --- */
+
+
+        /* For phones */
         @media (max-width: 480px) {
-            #infix-problem {
+            body {
+                padding: 15px;
+            }
+            #problem {
                 font-size: 1.6rem;
+                /* background-color: #11efbf; */
             }
             #answer-input {
                 font-size: 1.4rem;
@@ -276,15 +286,22 @@
             .ranged-stat .value {
                 font-size: 1.0rem;
             }
-        }
+        } 
+
+        /* For smaller phones like iPhone SE */
         @media (max-width: 375px) {
             body {
                 padding: 10px;
+                /* background-color: #11efbf; */
             }
             .container {
-                padding: 15px; 
+                padding: 10px; 
+            }
+            .start-screen, .problem-screen, .results-screen {
+                min-height: 160px;
             }
         }
+
     </style>
 </head>
 <body>
@@ -292,23 +309,23 @@
     <div class="container">
         
         <div id="start-screen" class="start-screen">
+            <div class="status-container">
+                <div>&nbsp;</div>
+            </div>
             <div id="start-problem-set-description" class="problem-set-description"></div>
             <button id="start-button">Start</button>
         </div>
 
-        <div id="game-container" class="hidden">
+        <div id="problem-screen" class="problem-screen hidden">
             <div class="status-container">
                 <div id="status-line"></div>
             </div>
             <div class="problem-container">
-                <div id="infix-problem"></div>
+                <div id="problem"></div>
                 <div class="input-area">
                     <input type="text" inputmode="numeric" pattern="[0-9]*" id="answer-input" placeholder="Answer" autocomplete="off">
                     <button id="skip-button" class="hidden">Skip</button>
                 </div>
-            </div>
-            <div class="postfix-details">
-                <div id="postfix-problem"></div>
             </div>
         </div>
 
@@ -318,10 +335,14 @@
             </div>
             <h2 id="total-time"></h2>
             <div id="end-problem-set-description" class="problem-set-description"></div>
-            <button id="new-set-button" style="margin-bottom: 1.5rem;">New Set</button>
+            <button id="new-set-button">New Set</button>
             <h3>Results</h3>
             <ul id="results-list" class="results-list"></ul>
         </div>
+    </div>
+
+    <div class="postfix-details">
+        <div id="postfix-problem"></div>
     </div>
     
     <div id="settings-menu">
@@ -330,12 +351,12 @@
 
 
     <script>
-        const infixProblemElement = document.getElementById('infix-problem');
+        const problemElement = document.getElementById('problem');
         const postfixProblemElement = document.getElementById('postfix-problem');
         const answerInputElement = document.getElementById('answer-input');
 
         const startScreen = document.getElementById('start-screen');
-        const gameContainer = document.getElementById('game-container');
+        const problemScreen = document.getElementById('problem-screen');
         const resultsScreen = document.getElementById('results-screen');
         const startButton = document.getElementById('start-button');
         const newSetButton = document.getElementById('new-set-button');
@@ -595,7 +616,7 @@
 
             startScreen.classList.add('hidden');
             resultsScreen.classList.add('hidden');
-            gameContainer.classList.remove('hidden');
+            problemScreen.classList.remove('hidden');
 
             displayNewProblem();
         }
@@ -628,12 +649,13 @@
                 skipped: false
             });
 
-            infixProblemElement.textContent = infixProblem;
+            problemElement.textContent = infixProblem;
             postfixProblemElement.textContent = `${postfixProblem.join(' ')}`;
             
             answerInputElement.value = '';
             answerInputElement.classList.remove('incorrect');
             answerInputElement.focus();
+            window.scrollTo(0, 0);
 
             problemStartTime = Date.now();
         }
@@ -656,7 +678,7 @@
             const totalSeconds = Math.round((Date.now() - setStartTime) / 1000); // Rounded
             totalTimeElement.textContent = `Finished in ${totalSeconds}s`;
 
-            gameContainer.classList.add('hidden');
+            problemScreen.classList.add('hidden');
             resultsScreen.classList.remove('hidden');
 
             problemHistory.sort((a, b) => b.time - a.time);
