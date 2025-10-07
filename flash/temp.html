@@ -54,6 +54,12 @@
             min-height: 50px;
         }
 
+        .input-area {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
         #answer-input {
             width: 100%;
             padding: 12px;
@@ -72,6 +78,29 @@
 
         #answer-input.incorrect {
             border-color: var(--incorrect-color);
+        }
+
+        #skip-button {
+            position: absolute;
+            right: 10px;
+            padding: 6px 12px;
+            font-size: 0.9rem;
+            background-color: var(--secondary-text-color);
+
+            /* 1. Initial State (Hidden) */
+            opacity: 0;
+            pointer-events: none; /* Prevents clicking the invisible button */
+
+            /* 2. Define the transition */
+            transition: opacity 0.2s ease-in-out; /* Animate only opacity */
+        }
+        #skip-button.fade-in {
+            opacity: 1;
+            pointer-events: auto; /* Allow clicks when visible */
+        }
+        
+        #skip-button:hover {
+            background-color: #5a6268;
         }
 
         .postfix-details {
@@ -273,7 +302,10 @@
             </div>
             <div class="problem-container">
                 <div id="infix-problem"></div>
-                <input type="text" inputmode="numeric" pattern="[0-9]*" id="answer-input" placeholder="Answer" autocomplete="off">
+                <div class="input-area">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" id="answer-input" placeholder="Answer" autocomplete="off">
+                    <button id="skip-button" class="hidden">Skip</button>
+                </div>
             </div>
             <div class="postfix-details">
                 <div id="postfix-problem"></div>
@@ -307,6 +339,7 @@
         const resultsScreen = document.getElementById('results-screen');
         const startButton = document.getElementById('start-button');
         const newSetButton = document.getElementById('new-set-button');
+        const skipButtonElement = document.getElementById('skip-button');
 
         const statusLineElement = document.getElementById('status-line');
         const finalStatusLineElement = document.getElementById('final-status-line');
@@ -333,7 +366,10 @@
             problemCount: 36,
             maxAnswerValue: 512,
             preventNegativeResults: true,
-            orderOfOperationsSensitive: true
+            orderOfOperationsSensitive: true,
+
+            minIncorrectAttemptsForSkip: 2, //3,
+            minTimeForSkip: 30 //30
         };
         // -------------------
 
@@ -345,6 +381,10 @@
         let setStartTime = 0;
         let problemStartTime = 0;
         let isCurrentProblemIncorrect = false;
+        let skippedCount = 0;
+        let currentProblemIncorrectAttempts = 0;
+        let isInputCurrentlyIncorrect = false;
+        let skipCheckInterval = null;
 
         function parseUrlParams() {
             const params = new URLSearchParams(window.location.search);
@@ -549,6 +589,7 @@
             gameState = 'running';
             currentProblemIndex = 0;
             incorrectAnswers = 0;
+            skippedCount = 0;
             problemHistory = [];
             setStartTime = Date.now();
 
@@ -566,6 +607,13 @@
             }
             currentProblemIndex++;
             isCurrentProblemIncorrect = false;
+            currentProblemIncorrectAttempts = 0;
+            isInputCurrentlyIncorrect = false;
+            skipButtonElement.classList.add('hidden');
+            skipButtonElement.classList.remove('fade-in');
+
+            if (skipCheckInterval) clearInterval(skipCheckInterval);
+            skipCheckInterval = setInterval(checkSkipButtonVisibility, 1000);
 
             updateProgress();
 
@@ -576,7 +624,8 @@
                 postfix: postfixProblem,
                 infix: infixProblem,
                 time: 0,
-                incorrect: false
+                incorrect: false,
+                skipped: false
             });
 
             infixProblemElement.textContent = infixProblem;
@@ -594,11 +643,15 @@
             if (incorrectAnswers > 0) {
                 statusText += ` | Incorrect: ${incorrectAnswers}`;
             }
+            if (skippedCount > 0) {
+                statusText += ` | Skipped: ${skippedCount}`;
+            }
             statusLineElement.textContent = statusText;
             finalStatusLineElement.textContent = statusText;
         }
 
         function finishGame() {
+            if (skipCheckInterval) clearInterval(skipCheckInterval);
             gameState = 'finished';
             const totalSeconds = Math.round((Date.now() - setStartTime) / 1000); // Rounded
             totalTimeElement.textContent = `Finished in ${totalSeconds}s`;
@@ -629,6 +682,35 @@
             endDescElement.innerHTML = createProblemSetDescription();
         }
 
+        function handleSkip() {
+            if (gameState !== 'running') return;
+
+            skippedCount++;
+            
+            if (!isCurrentProblemIncorrect) {
+                isCurrentProblemIncorrect = true;
+                incorrectAnswers++;
+            }
+            
+            const timeTaken = Date.now() - problemStartTime;
+            problemHistory[currentProblemIndex - 1].time = timeTaken;
+            problemHistory[currentProblemIndex - 1].incorrect = true;
+            problemHistory[currentProblemIndex - 1].skipped = true;
+
+            displayNewProblem();
+        }
+
+        function checkSkipButtonVisibility() {
+            if (gameState !== 'running') return;
+
+            const timeElapsed = Date.now() - problemStartTime;
+            if (currentProblemIncorrectAttempts >= config.minIncorrectAttemptsForSkip &&
+                timeElapsed >= config.minTimeForSkip*1000) {
+                skipButtonElement.classList.remove('hidden');
+                skipButtonElement.classList.add('fade-in');
+            }
+        }
+
         function handleInput() {
             if (gameState !== 'running') return;
             
@@ -644,12 +726,20 @@
                 displayNewProblem(); 
             } else if (correctAnswerStr.startsWith(userAnswer)) {
                 answerInputElement.classList.remove('incorrect');
+                if (isInputCurrentlyIncorrect) {
+                    isInputCurrentlyIncorrect = false;
+                }
             } else {
                 answerInputElement.classList.add('incorrect');
                 if (!isCurrentProblemIncorrect) {
                     isCurrentProblemIncorrect = true;
                     incorrectAnswers++;
                     updateProgress();
+                }
+                if (!isInputCurrentlyIncorrect) {
+                    isInputCurrentlyIncorrect = true;
+                    currentProblemIncorrectAttempts++;
+                    checkSkipButtonVisibility();
                 }
             }
         }
@@ -673,6 +763,7 @@
             answerInputElement.addEventListener('input', handleInput);
             startButton.addEventListener('click', startGame);
             newSetButton.addEventListener('click', startGame);
+            skipButtonElement.addEventListener('click', handleSkip);
             document.addEventListener('keydown', handleKeyDown);
 
             if (window.location.hash === '#debug') {
