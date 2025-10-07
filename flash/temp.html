@@ -12,6 +12,7 @@
             --secondary-text-color: #6c757d;
             --incorrect-color: #dc3545;
             --border-color: #ced4da;
+            --highlight-color: #007bff;
             --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
@@ -22,7 +23,8 @@
             padding: 20px;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
+            padding-top: 5vh;
             min-height: 100vh;
             box-sizing: border-box;
         }
@@ -32,8 +34,11 @@
             padding: 25px;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            width: 100%;
             max-width: 450px;
+            box-sizing: border-box;
+            width: -webkit-fill-available; /* Fix for inconsistent width on zoom */
+            width: -moz-available;
+            width: stretch;
             text-align: center;
         }
 
@@ -83,6 +88,147 @@
             border-radius: 4px;
             word-wrap: break-word;
         }
+        
+        .status-container {
+            width: 100%;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            margin: -10px 0 1rem -15px; /* Pulled to top-left */
+            color: var(--secondary-text-color);
+        }
+        
+        .start-screen, .results-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; /* Changed to prevent layout shift */
+            text-align: center;
+        }
+
+        .start-screen {
+            padding: 4rem 0; /* Added padding to vertically space the content */
+        }
+
+        .results-screen h2 {
+            margin: 1.5rem 0; /* Equal space above and below */
+            font-size: 1.8rem;
+        }
+        
+        .results-screen h3 {
+            text-align: left;
+            width: 100%;
+            margin: 1.5rem 0 0.5rem; /* Closer to list */
+        }
+
+        .problem-set-description {
+            margin-bottom: 0.5rem; /* Closer to button */
+            width: 100%;
+        }
+        
+        /* --- START: New Description Styles --- */
+        .description {
+            display: flex;
+            justify-content: center;
+            align-items: baseline;
+            text-align: center;
+            font-size: 1.4rem;
+            font-weight: 500;
+            color: #333;
+            white-space: nowrap;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+        
+        .description .separator {
+            font-weight: 300;
+            color: #ced4da;
+        }
+        
+        .ranged-stat {
+            display: inline-flex;
+            flex-direction: column;
+            text-align: center;
+            line-height: 1.1;
+        }
+        
+        .ranged-stat .value {
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        .ranged-stat .label {
+            font-size: 0.55rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #6c757d;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+        /* --- END: New Description Styles --- */
+
+
+        .results-list {
+            list-style: none;
+            padding: 0;
+            width: 100%;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
+
+        .results-list li {
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: flex-start;
+            align-items: baseline;
+            border-bottom: 1px solid #dee2e6;
+            overflow: hidden;
+        }
+        .results-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .results-list .problem-expr {
+            /* font-family: monospace; */
+            font-size: 1.1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-shrink: 1;
+            min-width: 0;
+        }
+
+        .results-list .problem-time {
+            color: #a0a0a0;
+            margin-left: 0.5rem;
+            flex-shrink: 0;
+        }
+
+        .results-list .incorrect-problem {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+        
+        button {
+            background-color: var(--highlight-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1.2rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
 
         /* Responsive adjustments for smaller screens */
         @media (max-width: 480px) {
@@ -92,38 +238,101 @@
             #answer-input {
                 font-size: 1.4rem;
             }
+            button {
+                font-size: 1rem;
+                padding: 10px 20px;
+            }
+            .description, .description .separator {
+                font-size: 1.2rem;
+            }
+            .ranged-stat .value {
+                font-size: 1.0rem;
+            }
         }
-
+        @media (max-width: 375px) {
+            body {
+                padding: 10px;
+                padding-top: 2vh;
+            }
+            .container {
+                padding: 15px; 
+            }
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <div class="problem-container">
-            <div id="infix-problem"></div>
-            <input type="text" inputmode="numeric" pattern="[0-9]*" id="answer-input" placeholder="Answer">
-        </div>
         
-        <div class="postfix-details">
-            <div id="postfix-problem"></div>
+        <div id="start-screen" class="start-screen">
+            <div id="start-problem-set-description" class="problem-set-description"></div>
+            <button id="start-button">Start</button>
+        </div>
+
+        <div id="game-container" class="hidden">
+            <div class="status-container">
+                <div id="status-line"></div>
+            </div>
+            <div class="problem-container">
+                <div id="infix-problem"></div>
+                <input type="text" inputmode="numeric" pattern="[0-9]*" id="answer-input" placeholder="Answer" autocomplete="off">
+            </div>
+            <div class="postfix-details">
+                <div id="postfix-problem"></div>
+            </div>
+        </div>
+
+        <div id="results-screen" class="results-screen hidden">
+            <div class="status-container">
+                 <div id="final-status-line"></div>
+            </div>
+            <h2 id="total-time"></h2>
+            <div id="end-problem-set-description" class="problem-set-description"></div>
+            <button id="new-set-button" style="margin-bottom: 1.5rem;">New Set</button>
+            <h3>Results</h3>
+            <ul id="results-list" class="results-list"></ul>
         </div>
     </div>
+    
+    <div id="settings-menu">
+        <!-- Settings menu will be injected here by JS -->
+    </div>
+
 
     <script>
         const infixProblemElement = document.getElementById('infix-problem');
         const postfixProblemElement = document.getElementById('postfix-problem');
         const answerInputElement = document.getElementById('answer-input');
 
-        // --- Configuration ---
-        const config = {
-            operators: ['+', '−', '×', '÷'], // ['÷'], //['+', '−', '×', '÷'],
-            
-            operatorPrecedence: {    '+': 1,      '−': 1,      '×': 2,      '÷': 2,     },
-            operatorAssociativity: { '+': 'left', '−': 'left', '×': 'left', '÷': 'left' },
-            fullyAssociative: {      '+': true,   '−': false,  '×': true,   '÷': false  },
+        const startScreen = document.getElementById('start-screen');
+        const gameContainer = document.getElementById('game-container');
+        const resultsScreen = document.getElementById('results-screen');
+        const startButton = document.getElementById('start-button');
+        const newSetButton = document.getElementById('new-set-button');
 
+        const statusLineElement = document.getElementById('status-line');
+        const finalStatusLineElement = document.getElementById('final-status-line');
+        const totalTimeElement = document.getElementById('total-time');
+        const resultsListElement = document.getElementById('results-list');
+        const startDescElement = document.getElementById('start-problem-set-description');
+        const endDescElement = document.getElementById('end-problem-set-description');
+
+        // --- Configuration ---
+        const defaults = {
+            n: 36,
+            opn: { min: 2, max: 3 },
+            vals: { min: 2, max: 9 },
+            ops: ['+', '−', '×', '÷']
+        };
+
+        const config = {
+            operators: ['+', '−', '×', '÷'],
+            operatorPrecedence: { '+': 1, '−': 1, '×': 2, '÷': 2 },
+            operatorAssociativity: { '+': 'left', '−': 'left', '×': 'left', '÷': 'left' },
+            fullyAssociative: { '+': true, '−': false, '×': true, '÷': false },
             valueRange: { min: 2, max: 9 },
             operatorCountRange: { min: 2, max: 3 },
+            problemCount: 36,
             maxAnswerValue: 512,
             preventNegativeResults: true,
             orderOfOperationsSensitive: true
@@ -131,6 +340,87 @@
         // -------------------
 
         let correctAnswer = 0;
+        let gameState = 'initial'; // initial, running, finished
+        let currentProblemIndex = 0;
+        let incorrectAnswers = 0;
+        let problemHistory = [];
+        let setStartTime = 0;
+        let problemStartTime = 0;
+        let isCurrentProblemIncorrect = false;
+
+        function parseUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            const operatorMap = { a: '+', s: '−', m: '×', d: '÷' };
+
+            // Set operator and value ranges first
+            if (params.has('ops')) {
+                config.operators = params.get('ops').split('').map(op => operatorMap[op]).filter(Boolean);
+                if (config.operators.length === 0) config.operators = defaults.ops;
+            } else {
+                config.operators = defaults.ops;
+            }
+
+            if (params.has('vals')) {
+                const [min, max] = params.get('vals').split('..').map(Number);
+                config.valueRange = { min, max: max || min };
+            } else {
+                config.valueRange = defaults.vals;
+            }
+
+            if (params.has('opn')) {
+                const [min, max] = params.get('opn').split('..').map(Number);
+                config.operatorCountRange = { min, max: max || min };
+            } else {
+                config.operatorCountRange = defaults.opn;
+            }
+            
+            // Set problem count based on ranges, or URL param
+            if (params.has('n')) {
+                config.problemCount = parseInt(params.get('n'), 10);
+            } else {
+                const avgOperators = (config.operatorCountRange.min + config.operatorCountRange.max) / 2;
+                config.problemCount = Math.round(36 / avgOperators);
+            }
+        }
+
+        function createProblemSetDescription() {
+            const problemCount = `<span>#${config.problemCount}</span>`;
+            const opsString = `<span>${config.operators.join(' ')}</span>`;
+            
+            const opnCountValue = config.operatorCountRange.min === config.operatorCountRange.max
+                ? config.operatorCountRange.min
+                : `${config.operatorCountRange.min} to ${config.operatorCountRange.max}`;
+            
+            const opnCount = `
+                <div class="ranged-stat">
+                    <span class="value">${opnCountValue}</span>
+                    <span class="label">operators</span>
+                </div>`;
+            
+            const valsValue = config.valueRange.min === config.valueRange.max
+                ? config.valueRange.min
+                : `${config.valueRange.min} to ${config.valueRange.max}`;
+
+            const vals = `
+                <div class="ranged-stat">
+                    <span class="value">${valsValue}</span>
+                    <span class="label">values</span>
+                </div>`;
+            
+            const separator = `&nbsp;<span class="separator">|</span>&nbsp;`;
+
+            return `
+                <div class="description">
+                    ${problemCount}
+                    ${separator}
+                    ${opsString}
+                    ${separator}
+                    ${opnCount}
+                    ${separator}
+                    ${vals}
+                </div>
+            `;
+        }
         
         function getRandomInt(min, max) {
             return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -140,7 +430,7 @@
         }
 
 
-        // MAS: Simple random problem generator (no special case for div or sub)
+        // MAS: Simple random problem generator
         function generateProblem() {
             
             while (true) {
@@ -165,7 +455,7 @@
                 postfix.push(...ops);
 
                 // HACK: Opertunisiticly construct larger divisions and subtractions when operands 
-                // are both numbers rather than the result of other expressions
+                // are both numbers rather than the result of an expression
                 for (let i = 2; i < postfix.length; i++) {
                     const t = postfix[i];
                     if (typeof postfix[i-1] === 'number' && typeof postfix[i-2] === 'number') {
@@ -189,19 +479,15 @@
                         && Math.abs(finalAnswer) <= config.maxAnswerValue
                         && (!config.preventNegativeResults || finalAnswer >= 0)) {
                         correctAnswer = finalAnswer;
-                        return postfix; // Success
+                        return postfix; 
                     }
                 } catch (error) {
-                    // Catch errors like division by zero and let the loop retry
                     console.log(`generateProblem(): regen\n`);
                 }
             }
         }
         
 
-        /**
-         * Evaluates a postfix expression.
-         */
         function evaluatePostfix(postfix) {
             const stack = [];
             for (const token of postfix) {
@@ -223,12 +509,6 @@
             return stack[0];
         }
 
-        /**
-         * Converts a postfix expression to an infix expression with minimal necessary parentheses.
-         *
-         * @param {Array<string|number>} postfix The postfix expression as an array of tokens.
-         * @returns {string} The resulting infix expression.
-         */
         function convertPostfixToInfix(postfix) {
             const stack = [];
             for (const token of postfix) {
@@ -266,56 +546,155 @@
             }
             return stack[0].expr;
         }
+        
+        function startGame() {
+            gameState = 'running';
+            currentProblemIndex = 0;
+            incorrectAnswers = 0;
+            problemHistory = [];
+            setStartTime = Date.now();
 
-        /**
-         * Displays a new problem.
-         */
+            startScreen.classList.add('hidden');
+            resultsScreen.classList.add('hidden');
+            gameContainer.classList.remove('hidden');
+
+            displayNewProblem();
+        }
+
         function displayNewProblem() {
-            const postfixProblem = generateProblem();
+            if (currentProblemIndex >= config.problemCount) {
+                finishGame();
+                return;
+            }
+            currentProblemIndex++;
+            isCurrentProblemIncorrect = false;
 
-            infixProblemElement.textContent = convertPostfixToInfix(postfixProblem);
+            updateProgress();
+
+            const postfixProblem = generateProblem();
+            const infixProblem = convertPostfixToInfix(postfixProblem);
+            
+            problemHistory.push({
+                postfix: postfixProblem,
+                infix: infixProblem,
+                time: 0,
+                incorrect: false
+            });
+
+            infixProblemElement.textContent = infixProblem;
             postfixProblemElement.textContent = `${postfixProblem.join(' ')}`;
             
             answerInputElement.value = '';
             answerInputElement.classList.remove('incorrect');
             answerInputElement.focus();
+
+            problemStartTime = Date.now();
+        }
+        
+        function updateProgress() {
+            let statusText = `${currentProblemIndex}/${config.problemCount}`;
+            if (incorrectAnswers > 0) {
+                statusText += ` | Incorrect: ${incorrectAnswers}`;
+            }
+            statusLineElement.textContent = statusText;
+            finalStatusLineElement.textContent = statusText;
         }
 
-        /**
-         * Checks the user's answer as they type.
-         */
-        function handleInput() {
+        function finishGame() {
+            gameState = 'finished';
+            const totalSeconds = Math.round((Date.now() - setStartTime) / 1000); // Rounded
+            totalTimeElement.textContent = `Finished in ${totalSeconds}s`;
 
+            gameContainer.classList.add('hidden');
+            resultsScreen.classList.remove('hidden');
+
+            problemHistory.sort((a, b) => b.time - a.time);
+
+            resultsListElement.innerHTML = '';
+            problemHistory.forEach(problem => {
+                const li = document.createElement('li');
+                li.classList.toggle('incorrect-problem', problem.incorrect);
+                
+                const exprSpan = document.createElement('span');
+                exprSpan.className = 'problem-expr';
+                exprSpan.textContent = problem.infix;
+
+                const timeSpan = document.createElement('span');
+                timeSpan.className = 'problem-time';
+                timeSpan.textContent = `${(problem.time / 1000).toFixed(1)}s`; // No parentheses
+                
+                li.appendChild(exprSpan);
+                li.appendChild(timeSpan);
+                resultsListElement.appendChild(li);
+            });
+            
+            endDescElement.innerHTML = createProblemSetDescription();
+        }
+
+        function handleInput() {
+            if (gameState !== 'running') return;
+            
             const userAnswer = answerInputElement.value;
             const correctAnswerStr = correctAnswer.toString();
 
             if (userAnswer === correctAnswerStr) {
+                const timeTaken = Date.now() - problemStartTime;
+                problemHistory[currentProblemIndex - 1].time = timeTaken;
+                problemHistory[currentProblemIndex - 1].incorrect = isCurrentProblemIncorrect;
+
                 answerInputElement.classList.remove('incorrect');
                 displayNewProblem(); 
             } else if (correctAnswerStr.startsWith(userAnswer)) {
                 answerInputElement.classList.remove('incorrect');
             } else {
                 answerInputElement.classList.add('incorrect');
+                if (!isCurrentProblemIncorrect) {
+                    isCurrentProblemIncorrect = true;
+                    incorrectAnswers++;
+                    updateProgress();
+                }
+            }
+        }
+        
+        function handleKeyDown(event) {
+            if (event.key === 'Enter') {
+                if (gameState === 'initial' || gameState === 'finished') {
+                    startGame();
+                }
+            }
+        }
+        
+        function init() {
+            parseUrlParams();
+            startDescElement.innerHTML = createProblemSetDescription();
+            
+            if (window.location.hash !== '#debug') {
+                postfixProblemElement.parentElement.classList.add('hidden');
+            }
+
+            answerInputElement.addEventListener('input', handleInput);
+            startButton.addEventListener('click', startGame);
+            newSetButton.addEventListener('click', startGame);
+            document.addEventListener('keydown', handleKeyDown);
+
+            if (window.location.hash === '#debug') {
+                answerInputElement.addEventListener('keyup', (event) => { // Changed to keyup for mobile
+                    if (event.key === 'Enter' && gameState === 'running') {
+                        // Fully simulate a correct answer to advance state
+                        const timeTaken = Date.now() - problemStartTime;
+                        if (problemHistory[currentProblemIndex - 1]) {
+                             problemHistory[currentProblemIndex - 1].time = timeTaken;
+                             problemHistory[currentProblemIndex - 1].incorrect = false;
+                        }
+                        displayNewProblem();
+                        event.stopPropagation();
+                        event.preventDefault(); 
+                    }
+                });
             }
         }
 
-        answerInputElement.addEventListener('input', handleInput);
-        
-
-        if (window.location.hash === '#debug') {
-            answerInputElement.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter') {
-                    displayNewProblem();
-                    event.preventDefault(); 
-                }
-            });
-        }
-        if (window.location.hash === '#test') {
-            testInfixConversion(5000);
-        }
-
-        document.addEventListener('DOMContentLoaded', displayNewProblem);
-
+        document.addEventListener('DOMContentLoaded', init);
 
     </script>
 </body>
