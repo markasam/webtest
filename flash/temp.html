@@ -50,9 +50,9 @@
             margin-top: 1.0rem;
         }
 
-        .problem-container {
-            /* margin-bottom: 25px; */
-        }
+        /* .problem-container {
+            margin-bottom: 25px;
+        } */
 
         #problem {
             font-size: 1.9rem;
@@ -136,8 +136,8 @@
             width: 100%;
             display: flex;
             justify-content: flex-start;
-            /* align-items: center; */
             color: var(--secondary-text-color);
+            line-height: 0.8;
         }
         
         .start-screen, .problem-screen, .results-screen {
@@ -228,47 +228,98 @@
             background-color: #0056b3;
         }
         
-        /* --- START: New Description Styles --- */
+        /* --- START: D1 Description Styles --- */
         .description {
             display: flex;
             justify-content: center;
-            align-items: baseline;
+            align-items: center; 
             text-align: center;
             font-size: 1.5rem;
             font-weight: 500;
-            color: #333;
+            color: var(--primary-text-color);
             white-space: nowrap;
             overflow-x: auto;
             padding-bottom: 5px;
+            gap: 0.3rem; /* TODO: does not work on old iPhone SE ? */
         }
         
         .description .separator {
             font-weight: 300;
-            color: #ced4da;
+            color: var(--border-color);
+            align-self: center; 
         }
         
-        .ranged-stat {
+        .stat-item {
             display: inline-flex;
             flex-direction: column;
             text-align: center;
             line-height: 1.1;
         }
         
-        .ranged-stat .value {
+        .stat-item .value {
             font-size: 1.2rem;
             font-weight: 500;
         }
 
-        .ranged-stat .label {
+        .stat-item .label {
             font-size: 0.55rem;
             font-weight: 600;
             text-transform: uppercase;
-            color: #6c757d;
+            color: var(--secondary-text-color);
             letter-spacing: 0.5px;
             margin-top: 2px;
         }
-        /* --- END: New Description Styles --- */
+        
+        .operator-grid {
+            font-weight: 500;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 0 2px; 
+            font-size: 1.4rem; 
+            line-height: 0.75; 
+            padding: 0;
+            margin-top: -0.28rem;
+        }
 
+        .operator-grid span {
+            text-align: center;
+            transition: color 0.3s, opacity 0.3s;
+        }
+
+        .operator-inactive {
+            color: var(--primary-text-color);
+            opacity: 0.25;
+        }
+
+        .interactive-stat {
+            cursor: pointer;
+            padding: 2px 4px;
+        }
+
+        .interactive-stat .value {
+            border-bottom: 1px dotted var(--secondary-text-color);
+            transition: border-bottom 0.2s ease-in-out;
+        }
+
+        .interactive-stat:hover .value {
+            border-bottom: 1px solid var(--primary-text-color);
+        }
+        /* --- END: D1 Description Styles --- */
+
+        #debug-status {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(0,0,0,0.75);
+            color: #fff;
+            padding: 2px 8px;
+            font-size: 12px;
+            font-family: monospace;
+            z-index: 1000;
+            pointer-events: none; /* Allows clicks to pass through */
+        }
 
         /* For phones */
         @media (max-width: 480px) {
@@ -286,13 +337,22 @@
                 font-size: 1.4rem;
             }
             button {
-                font-size: 1rem;
+                font-size: 1.1rem;
                 padding: 10px 20px;
             }
-
+            
+            .description {
+                font-size: 1.3rem;
+            }
+            .stat-item .value {
+                font-size: 1.1rem;
+            }
+            .operator-grid {
+                font-size: 1.2rem;
+            }
         } 
 
-        /* For smaller phones like iPhone SE */
+        /* For small phones / zoom > 100% */
         @media (max-width: 375px) {
             body {
                 padding: 10px;
@@ -301,18 +361,25 @@
             .container {
                 padding: 10px; 
             }
-            .start-screen, .problem-screen, .results-screen {
-                /* min-height: 160px; */
+            .status-container {
+                padding: 5px 0 0 5px; /* counteract reduced container margin */
             }
 
-            .description {
-                font-size: 1.2rem;
+            .input-area {
+                margin: 0 15px;
             }
+
+            /* .start-screen, .problem-screen, .results-screen {
+                min-height: 160px;
+            } */
+
         }
 
     </style>
 </head>
 <body>
+
+    <div id="debug-status" class="hidden"></div>
 
     <div class="container">
         
@@ -351,7 +418,7 @@
     </div>
 
     <div class="postfix-details">
-        <div id="postfix-problem"></div>
+        <div id="postfix-problem" class="hidden"></div>
     </div>
     
     <div id="settings-menu">
@@ -363,6 +430,7 @@
         const problemElement = document.getElementById('problem');
         const postfixProblemElement = document.getElementById('postfix-problem');
         const answerInputElement = document.getElementById('answer-input');
+        const debugStatusElement = document.getElementById('debug-status');
 
         const startScreen = document.getElementById('start-screen');
         const problemScreen = document.getElementById('problem-screen');
@@ -398,8 +466,8 @@
             preventNegativeResults: true,
             orderOfOperationsSensitive: true,
 
-            minIncorrectAttemptsForSkip: 1, //3,
-            minTimeForSkip: 15 //30
+            minIncorrectAttemptsForSkip: 2,
+            minTimeForSkip: 30
         };
         // -------------------
 
@@ -415,6 +483,11 @@
         let currentProblemIncorrectAttempts = 0;
         let isInputCurrentlyIncorrect = false;
         let skipCheckInterval = null;
+
+        function updateDebugStatus() {
+            if (!debugStatusElement) return;
+            debugStatusElement.textContent = `debug | ${window.innerWidth}w x ${window.innerHeight}h`;
+        }
 
         function parseUrlParams() {
             const params = new URLSearchParams(window.location.search);
@@ -451,18 +524,29 @@
             }
         }
 
-        function createProblemSetDescription() {
-            const problemCount = `<span>#${config.problemCount}</span>`;
-            const opsString = `<span>${config.operators.join(' ')}</span>`;
+       function createProblemSetDescription() {
+            const problemCount = `
+                <div class="stat-item interactive-stat">
+                    <span class="value">${config.problemCount}</span>
+                    <span class="label">count</span>
+                </div>`;
+            
+            const allOperators = ['+', '−', '×', '÷'];
+            const opsGridSpans = allOperators.map(op => {
+                const isActive = config.operators.includes(op);
+                const className = isActive ? '' : ' class="operator-inactive"';
+                return `<span${className}>${op}</span>`;
+            }).join('');
+            const opsGrid = `<div class="operator-grid">${opsGridSpans}</div>`;
             
             const opnCountValue = config.operatorCountRange.min === config.operatorCountRange.max
                 ? config.operatorCountRange.min
                 : `${config.operatorCountRange.min} to ${config.operatorCountRange.max}`;
             
             const opnCount = `
-                <div class="ranged-stat">
+                <div class="stat-item interactive-stat">
                     <span class="value">${opnCountValue}</span>
-                    <span class="label">operators</span>
+                    <span class="label">operations</span>
                 </div>`;
             
             const valsValue = config.valueRange.min === config.valueRange.max
@@ -470,20 +554,20 @@
                 : `${config.valueRange.min} to ${config.valueRange.max}`;
 
             const vals = `
-                <div class="ranged-stat">
+                <div class="stat-item interactive-stat">
                     <span class="value">${valsValue}</span>
                     <span class="label">values</span>
                 </div>`;
             
-            const separator = `&nbsp;<span class="separator">|</span>&nbsp;`;
+            const separator = `<span class="separator">|</span>`;
+            const isSingleOperation = config.operatorCountRange.min === 1 && config.operatorCountRange.max === 1;
 
             return `
                 <div class="description">
                     ${problemCount}
                     ${separator}
-                    ${opsString}
-                    ${separator}
-                    ${opnCount}
+                    ${!isSingleOperation ? opnCount : ''}
+                    ${opsGrid}
                     ${separator}
                     ${vals}
                 </div>
@@ -782,36 +866,68 @@
                 }
             }
         }
+
+        function handleDebugEnterKey(event) {
+            // Ensure the event only fires for the 'Enter' key and when a game is running
+            if (event.key === 'Enter' && gameState === 'running') {
+                // Fully simulate a correct answer to advance state
+                const timeTaken = Date.now() - problemStartTime;
+                if (problemHistory[currentProblemIndex - 1]) {
+                     problemHistory[currentProblemIndex - 1].time = timeTaken;
+                     problemHistory[currentProblemIndex - 1].incorrect = false;
+                }
+                displayNewProblem();
+                
+                // Prevent the event from doing anything else (like submitting a form)
+                event.stopPropagation();
+                event.preventDefault(); 
+            }
+        }
+
+        function handleDebugState() {
+            const isDebugMode = window.location.hash === '#debug';
+
+            // Toggle visibility of the postfix problem details
+            postfixProblemElement.parentElement.classList.toggle('hidden', !isDebugMode);
+
+            // Toggle visibility of the top debug status bar
+            if (debugStatusElement) {
+                debugStatusElement.classList.toggle('hidden', !isDebugMode);
+                if (isDebugMode) {
+                    updateDebugStatus();
+                    window.addEventListener('resize', updateDebugStatus);
+                } else {
+                    window.removeEventListener('resize', updateDebugStatus);
+                }
+            }
+
+            // --- NEW: Toggle the functional "Enter to skip" feature ---
+            if (isDebugMode) {
+                // If debug mode is ON, add the listener.
+                answerInputElement.addEventListener('keyup', handleDebugEnterKey);
+            } else {
+                // If debug mode is OFF, remove the listener.
+                answerInputElement.removeEventListener('keyup', handleDebugEnterKey);
+            }
+        }
         
         function init() {
             parseUrlParams();
             startDescElement.innerHTML = createProblemSetDescription();
             
-            if (window.location.hash !== '#debug') {
-                postfixProblemElement.parentElement.classList.add('hidden');
-            }
-
+            // Set the initial state based on the URL when the page loads
+            handleDebugState(); 
+            
+            // Listen for any future changes to the hash
+            window.addEventListener('hashchange', handleDebugState);
+            
+            // All original event listeners remain
             answerInputElement.addEventListener('input', handleInput);
             startButton.addEventListener('click', startGame);
             newSetButton.addEventListener('click', startGame);
             skipButtonElement.addEventListener('click', handleSkip);
             document.addEventListener('keydown', handleKeyDown);
 
-            if (window.location.hash === '#debug') {
-                answerInputElement.addEventListener('keyup', (event) => { // Changed to keyup for mobile
-                    if (event.key === 'Enter' && gameState === 'running') {
-                        // Fully simulate a correct answer to advance state
-                        const timeTaken = Date.now() - problemStartTime;
-                        if (problemHistory[currentProblemIndex - 1]) {
-                             problemHistory[currentProblemIndex - 1].time = timeTaken;
-                             problemHistory[currentProblemIndex - 1].incorrect = false;
-                        }
-                        displayNewProblem();
-                        event.stopPropagation();
-                        event.preventDefault(); 
-                    }
-                });
-            }
         }
 
         document.addEventListener('DOMContentLoaded', init);
