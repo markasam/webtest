@@ -240,7 +240,7 @@
             white-space: nowrap;
             overflow-x: auto;
             padding-bottom: 5px;
-            gap: 0.3rem; /* TODO: does not work on old iPhone SE ? */
+            gap: 0.3rem; /* TODO: does not work on old iPhone 5s */
         }
         
         .description .separator {
@@ -362,7 +362,7 @@
                 padding: 10px; 
             }
             .status-container {
-                padding: 5px 0 0 5px; /* counteract reduced container margin */
+                padding: 5px 0 0 5px; /* counteract reduced .container margin */
             }
 
             .input-area {
@@ -466,7 +466,7 @@
             preventNegativeResults: true,
             orderOfOperationsSensitive: true,
 
-            minIncorrectAttemptsForSkip: 2,
+            minIncorrectAttemptsForSkip: 3,
             minTimeForSkip: 30
         };
         // -------------------
@@ -715,6 +715,8 @@
         }
 
         function displayNewProblem() {
+            updateProgress();
+            
             if (currentProblemIndex >= config.problemCount) {
                 finishGame();
                 return;
@@ -728,8 +730,6 @@
 
             if (skipCheckInterval) clearInterval(skipCheckInterval);
             skipCheckInterval = setInterval(checkSkipButtonVisibility, 1000);
-
-            updateProgress();
 
             const postfixProblem = generateProblem();
             const infixProblem = convertPostfixToInfix(postfixProblem);
@@ -819,10 +819,14 @@
             if (gameState !== 'running') return;
 
             const timeElapsed = Date.now() - problemStartTime;
-            if (currentProblemIncorrectAttempts >= config.minIncorrectAttemptsForSkip &&
+            if (isInputCurrentlyIncorrect &&
+                currentProblemIncorrectAttempts >= config.minIncorrectAttemptsForSkip &&
                 timeElapsed >= config.minTimeForSkip*1000) {
                 skipButtonElement.classList.remove('hidden');
                 skipButtonElement.classList.add('fade-in');
+            } else {
+                skipButtonElement.classList.add('hidden');
+                skipButtonElement.classList.remove('fade-in');
             }
         }
 
@@ -843,6 +847,7 @@
                 answerInputElement.classList.remove('incorrect');
                 if (isInputCurrentlyIncorrect) {
                     isInputCurrentlyIncorrect = false;
+                    checkSkipButtonVisibility();
                 }
             } else {
                 answerInputElement.classList.add('incorrect');
