@@ -13,6 +13,7 @@
             --incorrect-color: #dc3545;
             --border-color: #ced4da;
             --highlight-color: #007bff;
+            --highlight-color-light: #e6f2ff;
             --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
@@ -295,17 +296,234 @@
         .interactive-stat {
             cursor: pointer;
             padding: 2px 4px;
+            border-radius: 4px;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        .interactive-stat:hover {
+            background-color: #e9ecef;
         }
 
         .interactive-stat .value {
             border-bottom: 1px dotted var(--secondary-text-color);
-            transition: border-bottom 0.2s ease-in-out;
         }
 
-        .interactive-stat:hover .value {
-            border-bottom: 1px solid var(--primary-text-color);
+        /* Groups operation count and operator grid into a single tap region. The inner gap
+           includes the operation count's former padding to keep the original spacing. */
+        .interactive-group {
+            display: inline-flex;
+            align-items: center;
+            gap: calc(0.3rem + 4px);
         }
         /* --- END: D1 Description Styles --- */
+
+        /* --- START: Settings Modal Styles --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.95);
+            background-color: var(--container-bg-color);
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            width: calc(100% - 40px);
+            max-width: 380px;
+            z-index: 1000;
+            box-sizing: border-box;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+
+            -webkit-user-select: none; /* Safari */
+            user-select: none; /* Standard syntax */
+        }
+
+        .modal.visible {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            color: var(--primary-text-color);
+        }
+
+        .modal-footer {
+            margin-top: 24px;
+            text-align: center;
+        }
+
+        .modal-footer button {
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 8px;
+            width: 100%;
+        }
+
+        .slider-value-display {
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: var(--highlight-color);
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .config-section {
+            margin-top: 20px;
+        }
+        .config-section:first-child {
+            margin-top: 0;
+        }
+        .config-title {
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--secondary-text-color);
+            letter-spacing: 0.5px;
+            margin: 0 0 12px 0;
+        }
+
+        .operator-toggle-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+        .operator-toggle {
+            font-size: 2rem;
+            font-weight: 500;
+            padding: 16px 0;
+            text-align: center;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+        .operator-toggle.active {
+            background-color: var(--highlight-color-light);
+            color: var(--highlight-color);
+            border-color: var(--highlight-color);
+        }
+        .operator-toggle.disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .mode-selector {
+            display: flex;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .mode-btn {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            background-color: transparent;
+            border: none;
+            border-radius: 0;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--secondary-text-color);
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .mode-btn:first-child {
+            border-right: 1px solid var(--border-color);
+        }
+        .mode-btn:hover {
+            background-color: #f8f9fa; /* override global button:hover */
+        }
+        .mode-btn.active {
+            background-color: var(--highlight-color-light);
+            color: var(--highlight-color);
+        }
+
+        .auto-adjust {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 16px; /* Less than .modal-footer's margin so it groups with the slider */
+            text-align: left;
+            font-size: 1rem;
+            color: var(--primary-text-color);
+            cursor: pointer;
+        }
+        .auto-adjust-detail {
+            display: block;
+            margin-top: 2px;
+            font-size: 0.85rem;
+            color: var(--secondary-text-color);
+            transition: opacity 0.2s;
+        }
+        .auto-adjust-detail.inactive {
+            opacity: 0.5;
+        }
+        .switch-input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .switch {
+            position: relative;
+            flex-shrink: 0;
+            width: 44px;
+            height: 26px;
+            border-radius: 13px;
+            background-color: var(--border-color);
+            transition: background-color 0.2s;
+        }
+        .switch::before {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #ffffff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s;
+        }
+        .switch-input:checked + .switch {
+            background-color: var(--highlight-color);
+        }
+        .switch-input:checked + .switch::before {
+            transform: translateX(18px);
+        }
+        .switch-input:focus-visible + .switch {
+            outline: 2px solid var(--highlight-color);
+            outline-offset: 2px;
+        }
+        /* --- END: Settings Modal Styles --- */
 
         #debug-status {
             position: fixed;
@@ -422,9 +640,64 @@
     </div>
     
     <div id="settings-menu">
-        <!-- Settings menu will be injected here by JS -->
+        <div class="modal-overlay" id="modal-overlay"></div>
+
+        <!-- Problem Count Modal -->
+        <div class="modal" id="modal-count">
+            <div class="modal-header"><h2>Problem Count</h2></div>
+            <div class="modal-body">
+                <div class="slider-value-display" id="count-slider-value">36</div>
+                <ui-slider id="count-slider" min="5" max="50" value="36"></ui-slider>
+                <label class="auto-adjust" id="count-auto-row">
+                    <span class="auto-adjust-text">
+                        Auto adjust
+                        <span class="auto-adjust-detail" id="count-auto-detail">Targets 36 operations per set</span>
+                    </span>
+                    <input type="checkbox" class="switch-input" id="count-auto-toggle">
+                    <span class="switch"></span>
+                </label>
+            </div>
+            <div class="modal-footer"><button id="done-count">Done</button></div>
+        </div>
+
+        <!-- Operations & Operators Modal -->
+        <div class="modal" id="modal-opsAndOpn">
+            <div class="modal-body">
+                <div class="mode-selector">
+                    <button class="mode-btn" data-mode="single">Single Operation</button>
+                    <button class="mode-btn" data-mode="multi">Multi-Operation</button>
+                </div>
+                <div class="config-section" id="opn-slider-section">
+                    <h3 class="config-title">Number of Operations</h3>
+                    <div class="slider-value-display" id="opn-slider-value">2 to 3</div>
+                    <ui-range-slider id="opn-slider" min="1" max="10" value-min="2" value-max="3" minimum-delta="0"></ui-range-slider>
+                </div>
+                <div class="config-section">
+                    <h3 class="config-title">Included Operators</h3>
+                    <div class="operator-toggle-grid" id="operator-toggles">
+                        <div class="operator-toggle active" data-op="+">+</div>
+                        <div class="operator-toggle active" data-op="−">−</div>
+                        <div class="operator-toggle active" data-op="×">×</div>
+                        <div class="operator-toggle active" data-op="÷">÷</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer"><button id="done-opsAndOpn">Done</button></div>
+        </div>
+
+        <!-- Values Range Modal -->
+        <div class="modal" id="modal-vals">
+            <div class="modal-header"><h2>Value Range</h2></div>
+            <div class="modal-body">
+                <div class="slider-value-display" id="vals-slider-value">2 to 9</div>
+                <ui-range-slider id="vals-slider" min="1" max="24" value-min="2" value-max="9"></ui-range-slider>
+            </div>
+            <div class="modal-footer"><button id="done-vals">Done</button></div>
+        </div>
     </div>
 
+
+    <script src="ui.js"></script>
 
     <script>
         const problemElement = document.getElementById('problem');
@@ -446,12 +719,36 @@
         const startDescElement = document.getElementById('start-problem-set-description');
         const endDescElement = document.getElementById('end-problem-set-description');
 
+        const settingsOverlayElement = document.getElementById('modal-overlay');
+        const settingsModals = {
+            count: document.getElementById('modal-count'),
+            opsAndOpn: document.getElementById('modal-opsAndOpn'),
+            vals: document.getElementById('modal-vals')
+        };
+        const countSlider = document.getElementById('count-slider');
+        const countSliderValueElement = document.getElementById('count-slider-value');
+        const countDoneButton = document.getElementById('done-count');
+        const countAutoRow = document.getElementById('count-auto-row');
+        const countAutoToggle = document.getElementById('count-auto-toggle');
+        const countAutoDetailElement = document.getElementById('count-auto-detail');
+        const opModeSelector = document.querySelector('#modal-opsAndOpn .mode-selector');
+        const opnSliderSection = document.getElementById('opn-slider-section');
+        const opnSlider = document.getElementById('opn-slider');
+        const opnSliderValueElement = document.getElementById('opn-slider-value');
+        const operatorToggleGrid = document.getElementById('operator-toggles');
+        const operatorToggles = operatorToggleGrid.querySelectorAll('.operator-toggle');
+        const opsAndOpnDoneButton = document.getElementById('done-opsAndOpn');
+        const valsSlider = document.getElementById('vals-slider');
+        const valsSliderValueElement = document.getElementById('vals-slider-value');
+        const valsDoneButton = document.getElementById('done-vals');
+
         // --- Configuration ---
         const defaults = {
             n: 36,
             opn: { min: 2, max: 3 },
             vals: { min: 2, max: 9 },
-            ops: ['+', '−', '×', '÷']
+            ops: ['+', '−', '×', '÷'],
+            w: 36
         };
 
         const config = {
@@ -462,7 +759,11 @@
             valueRange: { min: 2, max: 9 },
             operatorCountRange: { min: 2, max: 3 },
             problemCount: 36,
+            autoAdjustCount: true, // Derive problemCount from targetOperations and operatorCountRange
+            targetOperations: 36, // Total operations per problem set when auto adjusting
+            targetOperationsRange: { min: 5, max: 50 }, // Sets the problem count slider's range
             maxAnswerValue: 512,
+            maxAnswerValueAttempts: 1000, // Attempts to generate a problem before lifting maxAnswerValue for the set
             preventNegativeResults: true,
             orderOfOperationsSensitive: true,
 
@@ -483,6 +784,13 @@
         let currentProblemIncorrectAttempts = 0;
         let isInputCurrentlyIncorrect = false;
         let skipCheckInterval = null;
+        let isMaxAnswerValueLifted = false; // Reset at the start of each set
+        let activeSettingsModal = null;
+        let multiOpnCache = { ...defaults.opn }; // Restored when switching back from single-operation mode
+        let sliderMoved = false; // Whether the open menu's slider was moved by the user
+        let settingsSnapshot = ''; // Problem set params when the open menu was opened
+        let pendingTargetOperations = 0; // Count menu's target, applied on Done if auto adjusting
+        let pendingProblemCount = 0; // Count menu's problem count, applied on Done if not auto adjusting
 
         function updateDebugStatus() {
             if (!debugStatusElement) return;
@@ -515,18 +823,40 @@
                 config.operatorCountRange = defaults.opn;
             }
             
-            // Set problem count based on ranges, or URL param
+            const targetOperations = parseInt(params.get('w'), 10);
+            config.targetOperations = targetOperations > 0 ? targetOperations : defaults.w;
+
+            // Set problem count from URL param, or auto adjust it to target a total number of operations
             if (params.has('n')) {
+                config.autoAdjustCount = false;
                 config.problemCount = parseInt(params.get('n'), 10);
             } else {
-                const avgOperators = (config.operatorCountRange.min + config.operatorCountRange.max) / 2;
-                config.problemCount = Math.round(36 / avgOperators);
+                config.autoAdjustCount = true;
+                config.problemCount = getAutoProblemCount();
             }
+        }
+
+        function getAverageOperationCount() {
+            return (config.operatorCountRange.min + config.operatorCountRange.max) / 2;
+        }
+
+        function getAutoProblemCount(targetOperations = config.targetOperations) {
+            return Math.max(1, Math.round(targetOperations / getAverageOperationCount()));
+        }
+
+        // Problem counts whose total operations fall within targetOperationsRange. Rounds the same
+        // way as getAutoProblemCount() so auto adjusted counts always land within the range.
+        function getProblemCountRange() {
+            const avg = getAverageOperationCount();
+            return {
+                min: Math.max(1, Math.round(config.targetOperationsRange.min / avg)),
+                max: Math.max(1, Math.round(config.targetOperationsRange.max / avg))
+            };
         }
 
        function createProblemSetDescription() {
             const problemCount = `
-                <div class="stat-item interactive-stat">
+                <div class="stat-item interactive-stat" data-setting="count">
                     <span class="value">${config.problemCount}</span>
                     <span class="label">count</span>
                 </div>`;
@@ -544,7 +874,7 @@
                 : `${config.operatorCountRange.min} to ${config.operatorCountRange.max}`;
             
             const opnCount = `
-                <div class="stat-item interactive-stat">
+                <div class="stat-item">
                     <span class="value">${opnCountValue}</span>
                     <span class="label">operations</span>
                 </div>`;
@@ -554,7 +884,7 @@
                 : `${config.valueRange.min} to ${config.valueRange.max}`;
 
             const vals = `
-                <div class="stat-item interactive-stat">
+                <div class="stat-item interactive-stat" data-setting="vals">
                     <span class="value">${valsValue}</span>
                     <span class="label">values</span>
                 </div>`;
@@ -562,18 +892,249 @@
             const separator = `<span class="separator">|</span>`;
             const isSingleOperation = config.operatorCountRange.min === 1 && config.operatorCountRange.max === 1;
 
+            // Operation count and operators share one menu, so they share one tap region
+            const opsGroup = `
+                <div class="interactive-stat interactive-group" data-setting="opsAndOpn">
+                    ${!isSingleOperation ? opnCount : ''}
+                    ${opsGrid}
+                </div>`;
+
             return `
                 <div class="description">
                     ${problemCount}
                     ${separator}
-                    ${!isSingleOperation ? opnCount : ''}
-                    ${opsGrid}
+                    ${opsGroup}
                     ${separator}
                     ${vals}
                 </div>
             `;
         }
-        
+
+        function renderProblemSetDescriptions() {
+            startDescElement.innerHTML = createProblemSetDescription();
+            if (gameState === 'finished') {
+                endDescElement.innerHTML = createProblemSetDescription();
+            }
+        }
+
+        // --- Settings Menus ---
+        function formatSliderRange(min, max) {
+            return min === max ? `${min}` : `${min} to ${max}`;
+        }
+
+        function formatUrlRange(range) {
+            return range.min === range.max ? `${range.min}` : `${range.min}..${range.max}`;
+        }
+
+        // Inverse of the parsing in parseUrlParams()
+        function getProblemSetUrlParams() {
+            const operatorLetters = { '+': 'a', '−': 's', '×': 'm', '÷': 'd' };
+            const params = new URLSearchParams(window.location.search);
+            if (config.autoAdjustCount) {
+                params.delete('n');
+                if (config.targetOperations === defaults.w) {
+                    params.delete('w');
+                } else {
+                    params.set('w', config.targetOperations);
+                }
+            } else {
+                params.set('n', config.problemCount);
+                params.delete('w');
+            }
+            params.set('opn', formatUrlRange(config.operatorCountRange));
+            params.set('ops', config.operators.map(op => operatorLetters[op]).join(''));
+            params.set('vals', formatUrlRange(config.valueRange));
+            return params;
+        }
+
+        function updateCountMenuText() {
+            countSliderValueElement.textContent = pendingProblemCount;
+            countAutoDetailElement.textContent = `Targets ${pendingTargetOperations} operations per set`;
+            countAutoDetailElement.classList.toggle('inactive', !countAutoToggle.checked);
+        }
+
+        // When auto adjusting, the slider sets the target operations, from which the count is
+        // derived. Otherwise it sets the count directly, over a range matching the target's.
+        function configureCountSlider() {
+            const range = countAutoToggle.checked ? config.targetOperationsRange : getProblemCountRange();
+            countSlider.min = range.min;
+            countSlider.max = range.max;
+            countSlider.value = countAutoToggle.checked ? pendingTargetOperations : pendingProblemCount;
+        }
+
+        function setOperationMode(mode) {
+            opModeSelector.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            opnSliderSection.classList.toggle('hidden', mode === 'single');
+        }
+
+        // Prevent deselecting the last remaining operator
+        function updateOperatorToggleLock() {
+            const activeToggles = operatorToggleGrid.querySelectorAll('.operator-toggle.active');
+            if (activeToggles.length === 1) {
+                activeToggles[0].classList.add('disabled');
+            } else {
+                operatorToggleGrid.querySelectorAll('.operator-toggle.disabled').forEach(t => t.classList.remove('disabled'));
+            }
+        }
+
+        function openSettingsMenu(setting) {
+            const modal = settingsModals[setting];
+            if (!modal) return;
+
+            // Initialize menu controls from the current config. Text shows the config value
+            // rather than the slider's, which is clamped if the URL set an out-of-range value.
+            settingsSnapshot = getProblemSetUrlParams().toString();
+            sliderMoved = false;
+            switch (setting) {
+                case 'count':
+                    // Auto adjust has no effect with a single operation per problem
+                    countAutoRow.classList.toggle('hidden', getAverageOperationCount() === 1);
+                    countAutoToggle.checked = config.autoAdjustCount;
+                    pendingProblemCount = config.problemCount;
+                    pendingTargetOperations = config.autoAdjustCount
+                        ? config.targetOperations
+                        : Math.round(config.problemCount * getAverageOperationCount());
+                    configureCountSlider();
+                    updateCountMenuText();
+                    break;
+                case 'opsAndOpn': {
+                    const isSingleOperation = config.operatorCountRange.min === 1 && config.operatorCountRange.max === 1;
+                    setOperationMode(isSingleOperation ? 'single' : 'multi');
+
+                    opnSlider.valueMin = multiOpnCache.min;
+                    opnSlider.valueMax = multiOpnCache.max;
+                    opnSliderValueElement.textContent = formatSliderRange(multiOpnCache.min, multiOpnCache.max);
+
+                    operatorToggles.forEach(toggle => {
+                        toggle.classList.toggle('active', config.operators.includes(toggle.dataset.op));
+                    });
+                    updateOperatorToggleLock();
+                    break;
+                }
+                case 'vals':
+                    valsSlider.valueMin = config.valueRange.min;
+                    valsSlider.valueMax = config.valueRange.max;
+                    valsSliderValueElement.textContent = formatSliderRange(config.valueRange.min, config.valueRange.max);
+                    break;
+            }
+
+            activeSettingsModal = modal;
+            settingsOverlayElement.classList.add('visible');
+            modal.classList.add('visible');
+        }
+
+        function closeSettingsMenu() {
+            if (!activeSettingsModal) return;
+            settingsOverlayElement.classList.remove('visible');
+            activeSettingsModal.classList.remove('visible');
+            activeSettingsModal = null;
+        }
+
+        function applySettingsMenu() {
+            const params = getProblemSetUrlParams();
+            if (params.toString() !== settingsSnapshot) {
+                history.replaceState(null, '', `${window.location.pathname}?${params}${window.location.hash}`);
+                renderProblemSetDescriptions();
+            }
+            closeSettingsMenu();
+        }
+
+        function handleDescriptionClick(event) {
+            const statItem = event.target.closest('[data-setting]');
+            if (statItem) {
+                openSettingsMenu(statItem.dataset.setting);
+            }
+        }
+
+        function initSettingsMenus() {
+            startDescElement.addEventListener('click', handleDescriptionClick);
+            endDescElement.addEventListener('click', handleDescriptionClick);
+            settingsOverlayElement.addEventListener('click', closeSettingsMenu); // Dismiss without applying
+
+            // Count menu
+            // Pending values only change when the slider is moved, so out-of-range URL values are kept otherwise
+            countSlider.addEventListener('input', () => {
+                if (countAutoToggle.checked) {
+                    pendingTargetOperations = countSlider.value;
+                    pendingProblemCount = getAutoProblemCount(pendingTargetOperations);
+                } else {
+                    pendingProblemCount = countSlider.value;
+                    pendingTargetOperations = Math.round(pendingProblemCount * getAverageOperationCount());
+                }
+                updateCountMenuText();
+            });
+            countAutoToggle.addEventListener('change', () => {
+                configureCountSlider();
+                updateCountMenuText();
+            });
+            countDoneButton.addEventListener('click', () => {
+                config.autoAdjustCount = countAutoToggle.checked;
+                if (config.autoAdjustCount) {
+                    // Rounding error in the target is under half an operation, so this recovers a fixed count
+                    config.targetOperations = pendingTargetOperations;
+                    config.problemCount = getAutoProblemCount();
+                } else {
+                    config.problemCount = pendingProblemCount;
+                }
+                applySettingsMenu();
+            });
+
+            // Operations & operators menu
+            opModeSelector.addEventListener('click', (e) => {
+                const btn = e.target.closest('.mode-btn');
+                if (btn) setOperationMode(btn.dataset.mode);
+            });
+            opnSlider.addEventListener('input', () => {
+                sliderMoved = true;
+                opnSliderValueElement.textContent = formatSliderRange(opnSlider.valueMin, opnSlider.valueMax);
+            });
+            operatorToggleGrid.addEventListener('click', (e) => {
+                const toggle = e.target.closest('.operator-toggle');
+                if (toggle && !toggle.classList.contains('disabled')) {
+                    toggle.classList.toggle('active');
+                    updateOperatorToggleLock();
+                }
+            });
+            opsAndOpnDoneButton.addEventListener('click', () => {
+                const previousOpnRange = formatUrlRange(config.operatorCountRange);
+                const mode = opModeSelector.querySelector('.mode-btn.active').dataset.mode;
+                if (mode === 'single') {
+                    config.operatorCountRange = { min: 1, max: 1 };
+                } else {
+                    if (sliderMoved) {
+                        multiOpnCache = { min: opnSlider.valueMin, max: opnSlider.valueMax };
+                    }
+                    config.operatorCountRange = { ...multiOpnCache };
+                }
+
+                config.operators = Array.from(operatorToggles)
+                    .filter(toggle => toggle.classList.contains('active'))
+                    .map(toggle => toggle.dataset.op);
+
+                if (config.autoAdjustCount) {
+                    config.problemCount = getAutoProblemCount();
+                } else if (formatUrlRange(config.operatorCountRange) !== previousOpnRange) {
+                    // Keep a fixed count within a sensible number of total operations
+                    const countRange = getProblemCountRange();
+                    config.problemCount = Math.min(Math.max(config.problemCount, countRange.min), countRange.max);
+                }
+
+                applySettingsMenu();
+            });
+
+            // Values menu
+            valsSlider.addEventListener('input', () => {
+                sliderMoved = true;
+                valsSliderValueElement.textContent = formatSliderRange(valsSlider.valueMin, valsSlider.valueMax);
+            });
+            valsDoneButton.addEventListener('click', () => {
+                if (sliderMoved) config.valueRange = { min: valsSlider.valueMin, max: valsSlider.valueMax };
+                applySettingsMenu();
+            });
+        }
+
         function getRandomInt(min, max) {
             return Math.floor(Math.random() * (max - min + 1)) + min;
         }
@@ -584,8 +1145,17 @@
 
         // MAS: Simple random problem generator
         function generateProblem() {
-            
-            while (true) {
+            // With a single operation the answer range is predictable, so allow the full range of problems
+            const isSingleOperation = config.operatorCountRange.min === 1 && config.operatorCountRange.max === 1;
+
+            for (let attempt = 1; ; attempt++) {
+                // Some settings can't produce an answer within maxAnswerValue (e.g. multiplication
+                // only with many operations), so lift the limit for the rest of the set. Producing
+                // the problems the settings actually ask for lets the user spot a settings mistake.
+                if (attempt > config.maxAnswerValueAttempts) {
+                    isMaxAnswerValueLifted = true;
+                }
+
                 const opCount = getRandomInt(config.operatorCountRange.min, config.operatorCountRange.max);
                 
                 const ops = Array.from({ length: opCount }, () => getRandOpperator());
@@ -628,7 +1198,7 @@
                 try {
                     const finalAnswer = evaluatePostfix(postfix);
                     if (Number.isInteger(finalAnswer) && isFinite(finalAnswer)
-                        && Math.abs(finalAnswer) <= config.maxAnswerValue
+                        && (isSingleOperation || isMaxAnswerValueLifted || Math.abs(finalAnswer) <= config.maxAnswerValue)
                         && (!config.preventNegativeResults || finalAnswer >= 0)) {
                         correctAnswer = finalAnswer;
                         return postfix; 
@@ -704,6 +1274,7 @@
             currentProblemIndex = 0;
             incorrectAnswers = 0;
             skippedCount = 0;
+            isMaxAnswerValueLifted = false;
             problemHistory = [];
             setStartTime = Date.now();
 
@@ -865,6 +1436,7 @@
         }
         
         function handleKeyDown(event) {
+            if (activeSettingsModal) return; // Don't start a set while a settings menu is open
             if (event.key === 'Enter') {
                 if (gameState === 'initial' || gameState === 'finished') {
                     startGame();
@@ -918,7 +1490,11 @@
         
         function init() {
             parseUrlParams();
+            if (!(config.operatorCountRange.min === 1 && config.operatorCountRange.max === 1)) {
+                multiOpnCache = { ...config.operatorCountRange };
+            }
             startDescElement.innerHTML = createProblemSetDescription();
+            initSettingsMenus();
             
             // Set the initial state based on the URL when the page loads
             handleDebugState(); 
