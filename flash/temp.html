@@ -14,6 +14,7 @@
             --border-color: #ced4da;
             --highlight-color: #007bff;
             --highlight-color-light: #e6f2ff;
+            --underline-color: rgba(108, 117, 125, 0.5); /* Marks tappable numbers */
             --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
@@ -72,7 +73,7 @@
         }
 
         #answer-input {
-            width: 100%; 
+            width: 100%;
             padding: 12px;
             font-size: 1.6rem;
             border-radius: 5px;
@@ -90,6 +91,31 @@
         #answer-input:focus {
             outline: none;
             border-color: #80bdff;
+        }
+
+        /* Stands in for a native placeholder, which browsers paint as selected when a page selection
+           spans the input (e.g. dragging to select the problem). Unlike text inside an input, this can
+           be excluded from selection in every browser, without affecting the input's editing. */
+        .answer-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* Same box as #answer-input, so the text lands where the input's own text would. The input's
+               font and placeholder color vary by browser, so matchAnswerPlaceholderToInput() copies them. */
+            box-sizing: border-box;
+            padding: 12px;
+            border: 2px solid transparent;
+            font-size: 1.6rem;
+            line-height: normal;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            color: #757575; /* Fallback if the browser can't report its placeholder color */
+            pointer-events: none; /* Taps go to the input */
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         #answer-input.incorrect {
@@ -162,6 +188,76 @@
             margin: 1rem 0 0;
         }
 
+        /* Stale results: when the settings are edited after finishing, the results no longer go with
+           the description shown. The summary fades and each result is replaced by a placeholder bar
+           the size of its text, so nothing moves and the edited description is the focus. */
+        .results-screen .status-container,
+        #total-time {
+            transition: opacity 0.3s;
+        }
+
+        .results-screen.stale .status-container {
+            opacity: 0.25;
+        }
+
+        .results-screen.stale #total-time {
+            opacity: 0.18;
+        }
+
+        .results-screen.stale .results-list,
+        .results-screen.stale .results-list li {
+            border-color: #f1f3f5;
+        }
+
+        .results-screen.stale .results-list li {
+            background-color: transparent; /* Don't give away which were incorrect */
+        }
+
+        .results-screen.stale .problem-expr,
+        .results-screen.stale .problem-time {
+            color: transparent;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        /* Muted, as the user is most likely about to start a new set with the edited settings */
+        .results-screen .restore-results-button {
+            color: var(--secondary-text-color);
+            opacity: 0.6;
+            transition: opacity 0.2s, color 0.2s;
+        }
+
+        .results-screen .restore-results-button:hover {
+            color: var(--primary-text-color);
+            opacity: 1;
+        }
+
+        .restore-results-button,
+        .results-screen.stale .results-heading {
+            display: none;
+        }
+
+        .results-screen.stale .restore-results-button {
+            display: inline;
+        }
+
+        .link-button {
+            background: none;
+            border: none;
+            padding: 0;
+            font: inherit;
+            color: var(--highlight-color);
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .link-button:hover {
+            background: none;
+            color: #0056b3;
+        }
+
         .results-list {
             list-style: none;
             padding: 0;
@@ -223,6 +319,8 @@
             border-radius: 5px;
             cursor: pointer;
             transition: background-color 0.3s;
+            -webkit-user-select: none;
+            user-select: none;
         }
         
         button:hover {
@@ -242,6 +340,8 @@
             overflow-x: auto;
             padding-bottom: 5px;
             gap: 0.3rem; /* TODO: does not work on old iPhone 5s */
+            -webkit-user-select: none; /* Taps open menus, so don't select text */
+            user-select: none;
         }
         
         .description .separator {
@@ -304,8 +404,10 @@
             background-color: #e9ecef;
         }
 
+        /* A faint solid line rather than a dotted one, which Chromium renders with bunched or
+           stretched dots at some zoom and display scaling levels */
         .interactive-stat .value {
-            border-bottom: 1px dotted var(--secondary-text-color);
+            border-bottom: 1px solid var(--underline-color);
         }
 
         /* Groups operation count and operator grid into a single tap region. The inner gap
@@ -338,9 +440,10 @@
 
         .modal {
             position: fixed;
-            top: 50%;
+            top: 30px; /* Near the top like the main screen, leaving room for an on-screen keyboard */
             left: 50%;
-            transform: translate(-50%, -50%) scale(0.95);
+            transform: translateX(-50%) scale(0.95);
+            transform-origin: top center;
             background-color: var(--container-bg-color);
             padding: 24px;
             border-radius: 16px;
@@ -351,7 +454,10 @@
             box-sizing: border-box;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.3s ease, transform 0.3s ease;
+            /* Unlike pointer-events, descendants can't override visibility (ui.js slider thumbs set
+               pointer-events: auto, so hidden menus' thumbs would otherwise intercept taps) */
+            visibility: hidden;
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s 0.3s;
 
             -webkit-user-select: none; /* Safari */
             user-select: none; /* Standard syntax */
@@ -360,7 +466,9 @@
         .modal.visible {
             opacity: 1;
             pointer-events: auto;
-            transform: translate(-50%, -50%) scale(1);
+            visibility: visible;
+            transition-delay: 0s;
+            transform: translateX(-50%) scale(1);
         }
 
         .modal-header {
@@ -386,12 +494,79 @@
             width: 100%;
         }
 
+        .modal-footer.button-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-footer .secondary-button {
+            background-color: #e9ecef;
+            color: var(--primary-text-color);
+        }
+
+        .modal-footer .secondary-button:hover {
+            background-color: #dee2e6;
+        }
+
+        .modal-message {
+            -webkit-user-select: text; /* Modals disable selection */
+            user-select: text;
+            margin: 0;
+            font-size: 1rem;
+            line-height: 1.4;
+            color: var(--primary-text-color);
+            text-align: center;
+        }
+
         .slider-value-display {
             font-size: 2.5rem;
             font-weight: 600;
             color: var(--highlight-color);
             text-align: center;
             margin-bottom: 16px;
+            font-variant-numeric: tabular-nums; /* Digits keep their widths as values change */
+        }
+
+        /* "to" stays centered, with the numbers growing outward from it */
+        .slider-value-display[data-layout="range"] {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            column-gap: 0.25em;
+            align-items: baseline;
+        }
+
+        .range-min {
+            text-align: right;
+        }
+
+        .range-max {
+            text-align: left;
+        }
+
+        /* Tappable menu numbers, marked with the same underline as the description bar */
+        .editable-number {
+            cursor: pointer;
+            background-image: linear-gradient(var(--underline-color), var(--underline-color));
+            background-size: 100% 1px;
+            background-repeat: no-repeat;
+            /* Raised slightly from the bottom of the text box (below where descenders would be) */
+            background-position: left calc(100% - 0.09em);
+        }
+
+        .number-input {
+            font: inherit;
+            color: inherit;
+            text-align: inherit; /* Right aligned for a range's min, so digits stay put */
+            padding: 0;
+            margin: 0 0 -2px; /* With vertical-align, offsets the border so the layout doesn't shift */
+            vertical-align: top;
+            border: none;
+            border-bottom: 2px solid var(--highlight-color);
+            border-radius: 4px 4px 0 0;
+            background-color: var(--highlight-color-light);
+            outline: none;
+            -webkit-user-select: text; /* Modals disable selection */
+            user-select: text;
         }
 
         .config-section {
@@ -430,11 +605,6 @@
             color: var(--highlight-color);
             border-color: var(--highlight-color);
         }
-        .operator-toggle.disabled {
-            cursor: not-allowed;
-            opacity: 0.5;
-        }
-
         .mode-selector {
             display: flex;
             border: 1px solid var(--border-color);
@@ -551,7 +721,7 @@
             #problem {
                 font-size: 1.6rem;
             }
-            #answer-input {
+            #answer-input, .answer-placeholder {
                 font-size: 1.4rem;
             }
             button {
@@ -576,8 +746,11 @@
                 padding: 10px;
                 /* background-color: #11efbf; */
             }
+            .modal {
+                top: 10px; /* Match body padding */
+            }
             .container {
-                padding: 10px; 
+                padding: 10px;
             }
             .status-container {
                 padding: 5px 0 0 5px; /* counteract reduced .container margin */
@@ -617,20 +790,25 @@
                 <div id="problem"></div>
                 <div class="input-area">
                     <!-- Old iPhone SE would not show numpad when inputmode="numeric" included as atribute  -->
-                    <input id="answer-input" placeholder="Answer" type="number"                     pattern="\d*" autocomplete="off" />
+                    <input id="answer-input" aria-label="Answer" type="number"                     pattern="\d*" autocomplete="off" />
+                    <span id="answer-placeholder" class="answer-placeholder" aria-hidden="true">Answer</span>
                     <button id="skip-button" class="hidden">Skip</button>
                 </div>
             </div>
         </div>
 
         <div id="results-screen" class="results-screen hidden">
+            <!-- Marked as stale when the settings are edited after finishing (see updateResultsStaleness()) -->
             <div class="status-container">
                  <div id="final-status-line"></div>
             </div>
             <h2 id="total-time"></h2>
             <div id="end-problem-set-description" class="problem-set-description"></div>
             <button id="new-set-button">New Set</button>
-            <h3>Results</h3>
+            <h3>
+                <span class="results-heading">Results</span>
+                <button class="link-button restore-results-button" id="restore-results-button">Restore Results</button>
+            </h3>
             <ul id="results-list" class="results-list"></ul>
         </div>
     </div>
@@ -646,7 +824,7 @@
         <div class="modal" id="modal-count">
             <div class="modal-header"><h2>Problem Count</h2></div>
             <div class="modal-body">
-                <div class="slider-value-display" id="count-slider-value">36</div>
+                <div class="slider-value-display" id="count-slider-value" data-field="count">36</div>
                 <ui-slider id="count-slider" min="5" max="50" value="36"></ui-slider>
                 <label class="auto-adjust" id="count-auto-row">
                     <span class="auto-adjust-text">
@@ -669,7 +847,7 @@
                 </div>
                 <div class="config-section" id="opn-slider-section">
                     <h3 class="config-title">Number of Operations</h3>
-                    <div class="slider-value-display" id="opn-slider-value">2 to 3</div>
+                    <div class="slider-value-display" id="opn-slider-value" data-field="opn">2 to 3</div>
                     <ui-range-slider id="opn-slider" min="1" max="10" value-min="2" value-max="3" minimum-delta="0"></ui-range-slider>
                 </div>
                 <div class="config-section">
@@ -689,10 +867,21 @@
         <div class="modal" id="modal-vals">
             <div class="modal-header"><h2>Value Range</h2></div>
             <div class="modal-body">
-                <div class="slider-value-display" id="vals-slider-value">2 to 9</div>
+                <div class="slider-value-display" id="vals-slider-value" data-field="vals">2 to 9</div>
                 <ui-range-slider id="vals-slider" min="1" max="24" value-min="2" value-max="9"></ui-range-slider>
             </div>
             <div class="modal-footer"><button id="done-vals">Done</button></div>
+        </div>
+
+        <!-- Shown when the settings can't (practically) produce problems -->
+        <div class="modal" id="modal-generation-error">
+            <div class="modal-body">
+                <p class="modal-message">It’s difficult or impossible to generate problems matching these settings. Reset to default settings?</p>
+            </div>
+            <div class="modal-footer button-row">
+                <button class="secondary-button" id="keep-settings-button">Keep</button>
+                <button id="reset-settings-button">Reset</button>
+            </div>
         </div>
     </div>
 
@@ -703,6 +892,7 @@
         const problemElement = document.getElementById('problem');
         const postfixProblemElement = document.getElementById('postfix-problem');
         const answerInputElement = document.getElementById('answer-input');
+        const answerPlaceholderElement = document.getElementById('answer-placeholder');
         const debugStatusElement = document.getElementById('debug-status');
 
         const startScreen = document.getElementById('start-screen');
@@ -710,6 +900,7 @@
         const resultsScreen = document.getElementById('results-screen');
         const startButton = document.getElementById('start-button');
         const newSetButton = document.getElementById('new-set-button');
+        const restoreResultsButton = document.getElementById('restore-results-button');
         const skipButtonElement = document.getElementById('skip-button');
 
         const statusLineElement = document.getElementById('status-line');
@@ -741,6 +932,9 @@
         const valsSlider = document.getElementById('vals-slider');
         const valsSliderValueElement = document.getElementById('vals-slider-value');
         const valsDoneButton = document.getElementById('done-vals');
+        const generationErrorModal = document.getElementById('modal-generation-error');
+        const keepSettingsButton = document.getElementById('keep-settings-button');
+        const resetSettingsButton = document.getElementById('reset-settings-button');
 
         // --- Configuration ---
         const defaults = {
@@ -761,9 +955,16 @@
             problemCount: 36,
             autoAdjustCount: true, // Derive problemCount from targetOperations and operatorCountRange
             targetOperations: 36, // Total operations per problem set when auto adjusting
-            targetOperationsRange: { min: 5, max: 50 }, // Sets the problem count slider's range
+            targetOperationsRange: { min: 1, max: 50 }, // Sets the problem count slider's range
+            // Typed menu values may exceed slider ranges, within limits that keep problem generation sane
+            typedValueLimits: {
+                count: { min: 1, max: 999 },
+                opn: { min: 1, max: 20 },
+                vals: { min: 0, max: 999 }
+            },
             maxAnswerValue: 512,
             maxAnswerValueAttempts: 1000, // Attempts to generate a problem before lifting maxAnswerValue for the set
+            maxGenerationAttempts: 20000, // Attempts to generate a problem before abandoning the set
             preventNegativeResults: true,
             orderOfOperationsSensitive: true,
 
@@ -785,53 +986,51 @@
         let isInputCurrentlyIncorrect = false;
         let skipCheckInterval = null;
         let isMaxAnswerValueLifted = false; // Reset at the start of each set
+        let activeSetId = 0; // Identifies the current set's history entry
+        let setSettings = null; // Settings the current set started with, to compare against once finished
+        let setUrlSearch = ''; // URL query the current set started with, for Restore Results
+        let finishedSeconds = 0;
         let activeSettingsModal = null;
         let multiOpnCache = { ...defaults.opn }; // Restored when switching back from single-operation mode
-        let sliderMoved = false; // Whether the open menu's slider was moved by the user
-        let settingsSnapshot = ''; // Problem set params when the open menu was opened
         let pendingTargetOperations = 0; // Count menu's target, applied on Done if auto adjusting
         let pendingProblemCount = 0; // Count menu's problem count, applied on Done if not auto adjusting
+        let pendingOpnRange = { ...defaults.opn }; // Operations menu's multi-operation range, applied on Done
+        let pendingValueRange = { ...defaults.vals }; // Values menu's range, applied on Done
+        let activeNumberEdit = null; // { input, span, field } while a menu number is being typed in
 
         function updateDebugStatus() {
             if (!debugStatusElement) return;
             debugStatusElement.textContent = `debug | ${window.innerWidth}w x ${window.innerHeight}h`;
         }
 
-        function parseUrlParams() {
-            const params = new URLSearchParams(window.location.search);
+        // Problem set settings represented by URL params, with defaults for missing ones. When n is
+        // missing, problemCount is left for the caller to derive (see getAutoProblemCount()).
+        function parseProblemSetParams(params) {
             const operatorMap = { a: '+', s: '−', m: '×', d: '÷' };
+            const parseRange = (name, fallback) => {
+                if (!params.has(name)) return { ...fallback };
+                const [min, max] = params.get(name).split('..').map(Number);
+                return { min, max: max || min };
+            };
 
-            // Set operator and value ranges first
-            if (params.has('ops')) {
-                config.operators = params.get('ops').split('').map(op => operatorMap[op]).filter(Boolean);
-                if (config.operators.length === 0) config.operators = defaults.ops;
-            } else {
-                config.operators = defaults.ops;
-            }
+            let operators = params.has('ops') ? params.get('ops').split('').map(op => operatorMap[op]).filter(Boolean) : [];
+            if (operators.length === 0) operators = [...defaults.ops];
 
-            if (params.has('vals')) {
-                const [min, max] = params.get('vals').split('..').map(Number);
-                config.valueRange = { min, max: max || min };
-            } else {
-                config.valueRange = defaults.vals;
-            }
-
-            if (params.has('opn')) {
-                const [min, max] = params.get('opn').split('..').map(Number);
-                config.operatorCountRange = { min, max: max || min };
-            } else {
-                config.operatorCountRange = defaults.opn;
-            }
-            
             const targetOperations = parseInt(params.get('w'), 10);
-            config.targetOperations = targetOperations > 0 ? targetOperations : defaults.w;
+            return {
+                operators,
+                valueRange: parseRange('vals', defaults.vals),
+                operatorCountRange: parseRange('opn', defaults.opn),
+                targetOperations: targetOperations > 0 ? targetOperations : defaults.w,
+                // Set problem count from n, or auto adjust it to target a total number of operations
+                autoAdjustCount: !params.has('n'),
+                problemCount: parseInt(params.get('n'), 10)
+            };
+        }
 
-            // Set problem count from URL param, or auto adjust it to target a total number of operations
-            if (params.has('n')) {
-                config.autoAdjustCount = false;
-                config.problemCount = parseInt(params.get('n'), 10);
-            } else {
-                config.autoAdjustCount = true;
+        function parseUrlParams() {
+            Object.assign(config, parseProblemSetParams(new URLSearchParams(window.location.search)));
+            if (config.autoAdjustCount) {
                 config.problemCount = getAutoProblemCount();
             }
         }
@@ -915,41 +1114,203 @@
             if (gameState === 'finished') {
                 endDescElement.innerHTML = createProblemSetDescription();
             }
+            updateResultsStaleness();
         }
 
         // --- Settings Menus ---
-        function formatSliderRange(min, max) {
-            return min === max ? `${min}` : `${min} to ${max}`;
+
+        // Menu numbers are tappable spans so values can be typed in. Spans are updated in place so
+        // a tap on one isn't lost when another's edit is committed by the same tap.
+        function renderNumberDisplay(element, range) {
+            const layout = range.min === range.max ? 'single' : 'range';
+            if (element.dataset.layout !== layout) {
+                element.dataset.layout = layout;
+                element.innerHTML = layout === 'single'
+                    ? '<span class="editable-number" data-part="both"></span>'
+                    : '<span class="range-min"><span class="editable-number" data-part="min"></span></span>'
+                        + '<span>to</span>'
+                        + '<span class="range-max"><span class="editable-number" data-part="max"></span></span>';
+            }
+            element.querySelectorAll('.editable-number').forEach(span => {
+                span.textContent = span.dataset.part === 'max' ? range.max : range.min;
+            });
+        }
+
+        // Typing one end may leave a range inverted (min above max) until sortTypedRanges() is called.
+        // For part 'range', value is a whole typed range, e.g. from "3-7" typed into either end.
+        function applyTypedRangeValue(range, part, value) {
+            switch (part) {
+                case 'min': return { min: value, max: range.max };
+                case 'max': return { min: range.min, max: value };
+                case 'range': return sortRange(value);
+                default: return { min: value, max: value };
+            }
+        }
+
+        function sortRange(range) {
+            return range.min <= range.max ? range : { min: range.max, max: range.min };
+        }
+
+        // Swap the ends of a range left inverted by typing. Deferred until the user moves on from the
+        // range's numbers, so they can correct it by typing in the other end instead.
+        function sortTypedRanges() {
+            pendingOpnRange = sortRange(pendingOpnRange);
+            pendingValueRange = sortRange(pendingValueRange);
+            numberFields.opn.render();
+            numberFields.vals.render();
+        }
+
+        const rangeSliderPositions = new Map(); // Slider thumb positions last set or read, by slider
+
+        function setRangeSlider(slider, range) {
+            slider.valueMin = range.min;
+            slider.valueMax = range.max;
+            rangeSliderPositions.set(slider, { min: slider.valueMin, max: slider.valueMax });
+        }
+
+        // Only take the ends of the range whose thumbs moved, so a thumb pinned at the end of the
+        // slider by an out-of-range value keeps that value while the other thumb is used
+        function updateRangeFromSlider(slider, range) {
+            const last = rangeSliderPositions.get(slider);
+            const minMoved = slider.valueMin !== last.min;
+            const maxMoved = slider.valueMax !== last.max;
+            const updated = {
+                min: minMoved ? slider.valueMin : range.min,
+                max: maxMoved ? slider.valueMax : range.max
+            };
+            if (updated.min > updated.max) {
+                if (minMoved) updated.max = updated.min;
+                else updated.min = updated.max;
+            }
+            rangeSliderPositions.set(slider, { min: slider.valueMin, max: slider.valueMax });
+            return updated;
+        }
+
+        const numberFields = {
+            count: {
+                limits: config.typedValueLimits.count,
+                commit: (part, value) => {
+                    // When auto adjusting, target the operations the typed count implies
+                    pendingProblemCount = value;
+                    pendingTargetOperations = Math.round(value * getAverageOperationCount());
+                    configureCountSlider();
+                },
+                render: () => updateCountMenuText()
+            },
+            opn: {
+                limits: config.typedValueLimits.opn,
+                acceptsRange: true,
+                commit: (part, value) => {
+                    pendingOpnRange = applyTypedRangeValue(pendingOpnRange, part, value);
+                    setRangeSlider(opnSlider, sortRange(pendingOpnRange));
+                },
+                render: () => renderNumberDisplay(opnSliderValueElement, pendingOpnRange)
+            },
+            vals: {
+                limits: config.typedValueLimits.vals,
+                acceptsRange: true,
+                commit: (part, value) => {
+                    pendingValueRange = applyTypedRangeValue(pendingValueRange, part, value);
+                    setRangeSlider(valsSlider, sortRange(pendingValueRange));
+                },
+                render: () => renderNumberDisplay(valsSliderValueElement, pendingValueRange)
+            }
+        };
+
+        // Replace a tapped menu number with a text input holding its value, selected
+        function startNumberEdit(span) {
+            const field = numberFields[span.closest('.slider-value-display').dataset.field];
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.inputMode = 'numeric';
+            input.pattern = '\\d*'; // Numeric keypad on older iOS
+            input.autocomplete = 'off';
+            input.className = 'number-input';
+            input.value = span.textContent;
+
+            const fitWidth = () => { input.style.width = `${Math.max(input.value.length, 1) + 0.5}ch`; };
+            fitWidth();
+            input.addEventListener('input', fitWidth);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') finishNumberEdit(true);
+                else if (e.key === 'Escape') finishNumberEdit(false);
+            });
+            input.addEventListener('blur', () => finishNumberEdit(true));
+
+            span.replaceWith(input);
+            activeNumberEdit = { input, span, field };
+            input.focus();
+            input.setSelectionRange(0, input.value.length);
+        }
+
+        // Invalid input (empty, non-numeric) leaves the value unchanged; out-of-limit values are clamped.
+        // Either end of a range also accepts a whole range, e.g. "3-7", "3..7", "3 to 7", "3, 7" or "3 7".
+        function finishNumberEdit(commit) {
+            if (!activeNumberEdit) return;
+            const { input, span, field } = activeNumberEdit;
+            activeNumberEdit = null;
+            input.replaceWith(span);
+
+            const text = input.value.trim();
+            const clamp = (digits) => Math.min(Math.max(parseInt(digits, 10), field.limits.min), field.limits.max);
+            const rangeMatch = text.match(/^(\d+)\s*(?:-|–|—|\.{2,}|to|,|\s)\s*(\d+)$/i);
+            if (commit && /^\d+$/.test(text)) {
+                field.commit(span.dataset.part, clamp(text));
+            } else if (commit && rangeMatch && field.acceptsRange) {
+                field.commit('range', { min: clamp(rangeMatch[1]), max: clamp(rangeMatch[2]) });
+            }
+            field.render();
         }
 
         function formatUrlRange(range) {
             return range.min === range.max ? `${range.min}` : `${range.min}..${range.max}`;
         }
 
-        // Inverse of the parsing in parseUrlParams()
-        function getProblemSetUrlParams() {
+        function sameRange(a, b) {
+            return a.min === b.min && a.max === b.max;
+        }
+
+        // Same operators, in any order
+        function sameOperators(a, b) {
+            return a.length === b.length && a.every(op => b.includes(op));
+        }
+
+        // The current URL params, updated only where they no longer represent the config (taking
+        // defaults for missing params into account), so params the user hasn't changed are left alone.
+        // clearOperators removes ops, for when the user deselected every operator.
+        function getProblemSetUrlParams({ clearOperators = false } = {}) {
             const operatorLetters = { '+': 'a', '−': 's', '×': 'm', '÷': 'd' };
             const params = new URLSearchParams(window.location.search);
+            const current = parseProblemSetParams(params);
+
             if (config.autoAdjustCount) {
                 params.delete('n');
-                if (config.targetOperations === defaults.w) {
-                    params.delete('w');
-                } else {
+                if (config.targetOperations !== current.targetOperations) {
                     params.set('w', config.targetOperations);
                 }
-            } else {
+            } else if (current.autoAdjustCount || config.problemCount !== current.problemCount) {
                 params.set('n', config.problemCount);
-                params.delete('w');
             }
-            params.set('opn', formatUrlRange(config.operatorCountRange));
-            params.set('ops', config.operators.map(op => operatorLetters[op]).join(''));
-            params.set('vals', formatUrlRange(config.valueRange));
+
+            if (!sameRange(config.operatorCountRange, current.operatorCountRange)) {
+                params.set('opn', formatUrlRange(config.operatorCountRange));
+            }
+
+            if (clearOperators) {
+                params.delete('ops');
+            } else if (!sameOperators(config.operators, current.operators)) {
+                params.set('ops', config.operators.map(op => operatorLetters[op]).join(''));
+            }
+
+            if (!sameRange(config.valueRange, current.valueRange)) {
+                params.set('vals', formatUrlRange(config.valueRange));
+            }
             return params;
         }
 
         function updateCountMenuText() {
-            countSliderValueElement.textContent = pendingProblemCount;
-            countAutoDetailElement.textContent = `Targets ${pendingTargetOperations} operations per set`;
+            renderNumberDisplay(countSliderValueElement, { min: pendingProblemCount, max: pendingProblemCount });
+            countAutoDetailElement.textContent = `Targets ${pendingTargetOperations} operation${pendingTargetOperations === 1 ? '' : 's'} per set`;
             countAutoDetailElement.classList.toggle('inactive', !countAutoToggle.checked);
         }
 
@@ -969,24 +1330,13 @@
             opnSliderSection.classList.toggle('hidden', mode === 'single');
         }
 
-        // Prevent deselecting the last remaining operator
-        function updateOperatorToggleLock() {
-            const activeToggles = operatorToggleGrid.querySelectorAll('.operator-toggle.active');
-            if (activeToggles.length === 1) {
-                activeToggles[0].classList.add('disabled');
-            } else {
-                operatorToggleGrid.querySelectorAll('.operator-toggle.disabled').forEach(t => t.classList.remove('disabled'));
-            }
-        }
 
         function openSettingsMenu(setting) {
             const modal = settingsModals[setting];
             if (!modal) return;
 
-            // Initialize menu controls from the current config. Text shows the config value
-            // rather than the slider's, which is clamped if the URL set an out-of-range value.
-            settingsSnapshot = getProblemSetUrlParams().toString();
-            sliderMoved = false;
+            // Initialize menu controls from the current config. Pending values are shown rather than
+            // the slider's, which is clamped if the URL set or the user typed an out-of-range value.
             switch (setting) {
                 case 'count':
                     // Auto adjust has no effect with a single operation per problem
@@ -1003,23 +1353,26 @@
                     const isSingleOperation = config.operatorCountRange.min === 1 && config.operatorCountRange.max === 1;
                     setOperationMode(isSingleOperation ? 'single' : 'multi');
 
-                    opnSlider.valueMin = multiOpnCache.min;
-                    opnSlider.valueMax = multiOpnCache.max;
-                    opnSliderValueElement.textContent = formatSliderRange(multiOpnCache.min, multiOpnCache.max);
+                    pendingOpnRange = { ...multiOpnCache };
+                    setRangeSlider(opnSlider, pendingOpnRange);
+                    renderNumberDisplay(opnSliderValueElement, pendingOpnRange);
 
                     operatorToggles.forEach(toggle => {
                         toggle.classList.toggle('active', config.operators.includes(toggle.dataset.op));
                     });
-                    updateOperatorToggleLock();
                     break;
                 }
                 case 'vals':
-                    valsSlider.valueMin = config.valueRange.min;
-                    valsSlider.valueMax = config.valueRange.max;
-                    valsSliderValueElement.textContent = formatSliderRange(config.valueRange.min, config.valueRange.max);
+                    pendingValueRange = { ...config.valueRange };
+                    setRangeSlider(valsSlider, pendingValueRange);
+                    renderNumberDisplay(valsSliderValueElement, pendingValueRange);
                     break;
             }
 
+            showModal(modal);
+        }
+
+        function showModal(modal) {
             activeSettingsModal = modal;
             settingsOverlayElement.classList.add('visible');
             modal.classList.add('visible');
@@ -1027,17 +1380,19 @@
 
         function closeSettingsMenu() {
             if (!activeSettingsModal) return;
+            finishNumberEdit(false);
             settingsOverlayElement.classList.remove('visible');
             activeSettingsModal.classList.remove('visible');
             activeSettingsModal = null;
         }
 
-        function applySettingsMenu() {
-            const params = getProblemSetUrlParams();
-            if (params.toString() !== settingsSnapshot) {
-                history.replaceState(null, '', `${window.location.pathname}?${params}${window.location.hash}`);
-                renderProblemSetDescriptions();
+        function applySettingsMenu(urlOptions) {
+            const query = getProblemSetUrlParams(urlOptions).toString();
+            if (query !== new URLSearchParams(window.location.search).toString()) {
+                // Keep the entry's state, which identifies a set's entry for back/forward navigation
+                history.replaceState(history.state, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
             }
+            renderProblemSetDescriptions();
             closeSettingsMenu();
         }
 
@@ -1051,10 +1406,49 @@
         function initSettingsMenus() {
             startDescElement.addEventListener('click', handleDescriptionClick);
             endDescElement.addEventListener('click', handleDescriptionClick);
-            settingsOverlayElement.addEventListener('click', closeSettingsMenu); // Dismiss without applying
+            // A tap outside a menu dismisses it without applying changes, unless the tap ends a number
+            // edit, which it commits. Only taps that start on the overlay count, so a tap on a menu that
+            // moves as the on-screen keyboard closes isn't taken as a tap outside it.
+            let overlayTap = null;
+            settingsOverlayElement.addEventListener('pointerdown', () => {
+                overlayTap = { endsEdit: !!activeNumberEdit };
+            });
+            settingsOverlayElement.addEventListener('click', () => {
+                const tap = overlayTap;
+                overlayTap = null;
+                if (!tap) return;
+                if (tap.endsEdit) {
+                    finishNumberEdit(true);
+                    sortTypedRanges();
+                } else {
+                    closeSettingsMenu();
+                }
+            });
+
+            keepSettingsButton.addEventListener('click', closeSettingsMenu);
+            resetSettingsButton.addEventListener('click', () => {
+                resetToDefaultSettings();
+                closeSettingsMenu();
+            });
+
+            // Tap a menu number to type in a value
+            [countSliderValueElement, opnSliderValueElement, valsSliderValueElement].forEach(display => {
+                display.addEventListener('click', (e) => {
+                    const span = e.target.closest('.editable-number');
+                    if (span) startNumberEdit(span);
+                });
+            });
+            // Touching anything else in the menu (slider, Done, etc.) commits an edit first. Taps on
+            // non-focusable elements don't always blur the input on iOS.
+            Object.values(settingsModals).forEach(modal => {
+                modal.addEventListener('pointerdown', (e) => {
+                    if (activeNumberEdit && e.target !== activeNumberEdit.input) finishNumberEdit(true);
+                    if (!e.target.closest('.editable-number, .number-input')) sortTypedRanges();
+                }, true);
+            });
 
             // Count menu
-            // Pending values only change when the slider is moved, so out-of-range URL values are kept otherwise
+            // Pending values only change when the slider is moved or a value typed, so out-of-range URL values are kept otherwise
             countSlider.addEventListener('input', () => {
                 if (countAutoToggle.checked) {
                     pendingTargetOperations = countSlider.value;
@@ -1087,50 +1481,50 @@
                 if (btn) setOperationMode(btn.dataset.mode);
             });
             opnSlider.addEventListener('input', () => {
-                sliderMoved = true;
-                opnSliderValueElement.textContent = formatSliderRange(opnSlider.valueMin, opnSlider.valueMax);
+                pendingOpnRange = updateRangeFromSlider(opnSlider, pendingOpnRange);
+                renderNumberDisplay(opnSliderValueElement, pendingOpnRange);
             });
+            // Any operator can be deselected, e.g. clearing all of them before choosing one
             operatorToggleGrid.addEventListener('click', (e) => {
                 const toggle = e.target.closest('.operator-toggle');
-                if (toggle && !toggle.classList.contains('disabled')) {
-                    toggle.classList.toggle('active');
-                    updateOperatorToggleLock();
-                }
+                if (toggle) toggle.classList.toggle('active');
             });
             opsAndOpnDoneButton.addEventListener('click', () => {
                 const previousOpnRange = formatUrlRange(config.operatorCountRange);
+                const previousCountRange = getProblemCountRange();
                 const mode = opModeSelector.querySelector('.mode-btn.active').dataset.mode;
                 if (mode === 'single') {
                     config.operatorCountRange = { min: 1, max: 1 };
                 } else {
-                    if (sliderMoved) {
-                        multiOpnCache = { min: opnSlider.valueMin, max: opnSlider.valueMax };
-                    }
+                    multiOpnCache = sortRange(pendingOpnRange);
                     config.operatorCountRange = { ...multiOpnCache };
                 }
 
-                config.operators = Array.from(operatorToggles)
-                    .filter(toggle => toggle.classList.contains('active'))
+                const selectedToggles = Array.from(operatorToggles).filter(toggle => toggle.classList.contains('active'));
+                // With no operators selected, use them all
+                config.operators = (selectedToggles.length > 0 ? selectedToggles : Array.from(operatorToggles))
                     .map(toggle => toggle.dataset.op);
 
                 if (config.autoAdjustCount) {
                     config.problemCount = getAutoProblemCount();
-                } else if (formatUrlRange(config.operatorCountRange) !== previousOpnRange) {
-                    // Keep a fixed count within a sensible number of total operations
+                } else if (formatUrlRange(config.operatorCountRange) !== previousOpnRange
+                    && config.problemCount >= previousCountRange.min && config.problemCount <= previousCountRange.max) {
+                    // Keep a fixed count within a sensible number of total operations, unless the
+                    // count was already outside the slider's range (typed or from the URL)
                     const countRange = getProblemCountRange();
                     config.problemCount = Math.min(Math.max(config.problemCount, countRange.min), countRange.max);
                 }
 
-                applySettingsMenu();
+                applySettingsMenu({ clearOperators: selectedToggles.length === 0 });
             });
 
             // Values menu
             valsSlider.addEventListener('input', () => {
-                sliderMoved = true;
-                valsSliderValueElement.textContent = formatSliderRange(valsSlider.valueMin, valsSlider.valueMax);
+                pendingValueRange = updateRangeFromSlider(valsSlider, pendingValueRange);
+                renderNumberDisplay(valsSliderValueElement, pendingValueRange);
             });
             valsDoneButton.addEventListener('click', () => {
-                if (sliderMoved) config.valueRange = { min: valsSlider.valueMin, max: valsSlider.valueMax };
+                config.valueRange = sortRange(pendingValueRange);
                 applySettingsMenu();
             });
         }
@@ -1149,6 +1543,12 @@
             const isSingleOperation = config.operatorCountRange.min === 1 && config.operatorCountRange.max === 1;
 
             for (let attempt = 1; ; attempt++) {
+                // Some settings can't (practically) produce valid problems at all, e.g. division
+                // only with values of 0, or with many operations and a wide value range
+                if (attempt > config.maxGenerationAttempts) {
+                    return null;
+                }
+
                 // Some settings can't produce an answer within maxAnswerValue (e.g. multiplication
                 // only with many operations), so lift the limit for the rest of the set. Producing
                 // the problems the settings actually ask for lets the user spot a settings mistake.
@@ -1283,6 +1683,74 @@
             problemScreen.classList.remove('hidden');
 
             displayNewProblem();
+            if (gameState !== 'running') return; // Abandoned, see abandonGame()
+
+            // Give the set its own history entry, so back returns to the start screen while the set
+            // continues, and forward returns to it. Starting from the start screen pushes a new entry,
+            // which drops any forward entry for an earlier set. A new set started from the results
+            // screen replaces the finished set's entry instead.
+            activeSetId++;
+            const state = { flashSetId: activeSetId };
+            if (history.state && history.state.flashSetId) {
+                history.replaceState(state, '');
+            } else {
+                history.pushState(state, '');
+            }
+
+            setSettings = {
+                problemCount: config.problemCount,
+                operatorCountRange: { ...config.operatorCountRange },
+                valueRange: { ...config.valueRange },
+                operators: [...config.operators]
+            };
+            setUrlSearch = window.location.search;
+        }
+
+        // On the results screen, mark the results as stale while the settings (edited via the
+        // description) no longer match those the set was played with
+        function updateResultsStaleness() {
+            const isStale = gameState === 'finished' && setSettings !== null && !(
+                config.problemCount === setSettings.problemCount
+                && sameRange(config.operatorCountRange, setSettings.operatorCountRange)
+                && sameRange(config.valueRange, setSettings.valueRange)
+                && sameOperators(config.operators, setSettings.operators));
+            resultsScreen.classList.toggle('stale', isStale);
+
+            const seconds = String(finishedSeconds);
+            totalTimeElement.textContent = `Finished in ${isStale ? '–'.repeat(Math.max(2, seconds.length)) : `${seconds}s`}`;
+        }
+
+        // Return to the settings the finished set was played with
+        function restoreResults() {
+            history.replaceState(history.state, '', `${window.location.pathname}${setUrlSearch}${window.location.hash}`);
+            applyUrlSettings();
+        }
+
+        function showStartScreen() {
+            answerInputElement.blur();
+            problemScreen.classList.add('hidden');
+            resultsScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+        }
+
+        // Back and forward between a set and the start screen. Each history entry's URL holds the
+        // settings for it: the set's entry keeps those it started with, while the start screen's
+        // keeps any changes made there, so changing settings doesn't affect a set in progress.
+        function handleHistoryNavigation(event) {
+            closeSettingsMenu();
+            applyUrlSettings();
+
+            const isActiveSet = event.state && event.state.flashSetId === activeSetId && gameState !== 'initial';
+            if (!isActiveSet) {
+                showStartScreen();
+            } else if (gameState === 'finished') {
+                startScreen.classList.add('hidden');
+                resultsScreen.classList.remove('hidden');
+            } else {
+                startScreen.classList.add('hidden');
+                problemScreen.classList.remove('hidden');
+                answerInputElement.focus({ preventScroll: true });
+            }
         }
 
         function displayNewProblem() {
@@ -1303,6 +1771,10 @@
             skipCheckInterval = setInterval(checkSkipButtonVisibility, 1000);
 
             const postfixProblem = generateProblem();
+            if (!postfixProblem) {
+                abandonGame();
+                return;
+            }
             const infixProblem = convertPostfixToInfix(postfixProblem);
             
             problemHistory.push({
@@ -1317,6 +1789,7 @@
             postfixProblemElement.textContent = `${postfixProblem.join(' ')}`;
             
             answerInputElement.value = '';
+            updateAnswerPlaceholder();
             answerInputElement.classList.remove('incorrect');
             answerInputElement.focus({ preventScroll: true });
             window.scrollTo(0, 0);
@@ -1336,12 +1809,40 @@
             finalStatusLineElement.textContent = statusText;
         }
 
+        // Return to the start screen when the settings can't (practically) produce problems, and offer a reset
+        function abandonGame() {
+            if (skipCheckInterval) clearInterval(skipCheckInterval);
+            gameState = 'initial';
+            // If abandoned partway through, the set's history entry no longer has a set to return to
+            if (history.state && history.state.flashSetId) {
+                history.replaceState(null, '');
+            }
+            showStartScreen();
+            showModal(generationErrorModal);
+        }
+
+        function resetToDefaultSettings() {
+            config.operators = [...defaults.ops];
+            config.operatorCountRange = { ...defaults.opn };
+            config.valueRange = { ...defaults.vals };
+            config.targetOperations = defaults.w;
+            config.autoAdjustCount = true;
+            config.problemCount = getAutoProblemCount();
+            multiOpnCache = { ...defaults.opn };
+
+            const params = new URLSearchParams(window.location.search);
+            ['n', 'w', 'opn', 'ops', 'vals'].forEach(param => params.delete(param));
+            const query = params.toString();
+            history.replaceState(history.state, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+            renderProblemSetDescriptions();
+        }
+
         function finishGame() {
             if (skipCheckInterval) clearInterval(skipCheckInterval);
             gameState = 'finished';
-            const totalSeconds = Math.round((Date.now() - setStartTime) / 1000); // Rounded
-            totalTimeElement.textContent = `Finished in ${totalSeconds}s`;
+            finishedSeconds = Math.round((Date.now() - setStartTime) / 1000); // Rounded
 
+            answerInputElement.blur(); // iOS otherwise keeps the number pad open for the hidden input
             problemScreen.classList.add('hidden');
             resultsScreen.classList.remove('hidden');
 
@@ -1364,8 +1865,8 @@
                 li.appendChild(timeSpan);
                 resultsListElement.appendChild(li);
             });
-            
-            endDescElement.innerHTML = createProblemSetDescription();
+
+            renderProblemSetDescriptions();
         }
 
         function handleSkip() {
@@ -1401,7 +1902,30 @@
             }
         }
 
+        // Copy the input's font and placeholder color, which vary by browser and platform, so the overlay
+        // looks like the native placeholder it replaces. Font size comes from the stylesheet.
+        function matchAnswerPlaceholderToInput() {
+            const inputStyle = getComputedStyle(answerInputElement);
+            answerPlaceholderElement.style.fontFamily = inputStyle.fontFamily;
+            answerPlaceholderElement.style.fontWeight = inputStyle.fontWeight;
+            answerPlaceholderElement.style.fontStyle = inputStyle.fontStyle;
+            answerPlaceholderElement.style.letterSpacing = inputStyle.letterSpacing;
+            // Browsers that can't report ::placeholder styles return the input's own color; keep the fallback then
+            const placeholderColor = getComputedStyle(answerInputElement, '::placeholder').color;
+            if (placeholderColor && placeholderColor !== inputStyle.color) {
+                answerPlaceholderElement.style.color = placeholderColor;
+            }
+        }
+
+        // Show the placeholder only while the input is empty. A number input's value is also empty
+        // while it holds something unparseable (e.g. just "-"), which badInput catches.
+        function updateAnswerPlaceholder() {
+            const isEmpty = answerInputElement.value === '' && !answerInputElement.validity.badInput;
+            answerPlaceholderElement.classList.toggle('hidden', !isEmpty);
+        }
+
         function handleInput() {
+            updateAnswerPlaceholder();
             if (gameState !== 'running') return;
             
             const userAnswer = answerInputElement.value;
@@ -1435,12 +1959,33 @@
             }
         }
         
+        // Done button for each settings menu, so Enter can confirm the menu
+        const settingsDoneButtons = new Map([
+            [settingsModals.count, countDoneButton],
+            [settingsModals.opsAndOpn, opsAndOpnDoneButton],
+            [settingsModals.vals, valsDoneButton]
+        ]);
+
         function handleKeyDown(event) {
-            if (activeSettingsModal) return; // Don't start a set while a settings menu is open
-            if (event.key === 'Enter') {
-                if (gameState === 'initial' || gameState === 'finished') {
-                    startGame();
+            if (activeSettingsModal) {
+                // Enter confirms a settings menu, like Done, unless it's committing a number being typed
+                // in or activating a focused button (which handles Enter itself)
+                const doneButton = settingsDoneButtons.get(activeSettingsModal);
+                const isHandledByTarget = event.target.matches('input:not([type="checkbox"]), button');
+                if (event.key === 'Enter' && doneButton && !isHandledByTarget) {
+                    event.preventDefault();
+                    doneButton.click();
                 }
+                // Escape dismisses a menu without applying changes (or the error dialog, keeping the
+                // settings), unless it's cancelling a number being typed in
+                if (event.key === 'Escape' && !event.target.matches('.number-input')) {
+                    closeSettingsMenu();
+                }
+                return; // Don't start a set while a menu is open
+            }
+            // From the start or results screen, including the start screen with a set in progress
+            if (event.key === 'Enter' && problemScreen.classList.contains('hidden')) {
+                startGame();
             }
         }
 
@@ -1488,13 +2033,24 @@
             }
         }
         
-        function init() {
+        // Load settings from the URL and show them
+        function applyUrlSettings() {
             parseUrlParams();
             if (!(config.operatorCountRange.min === 1 && config.operatorCountRange.max === 1)) {
                 multiOpnCache = { ...config.operatorCountRange };
             }
-            startDescElement.innerHTML = createProblemSetDescription();
+            renderProblemSetDescriptions();
+        }
+
+        function init() {
+            matchAnswerPlaceholderToInput();
+            // A reload on a set's history entry has no set to return to
+            if (history.state && history.state.flashSetId) {
+                history.replaceState(null, '');
+            }
+            applyUrlSettings();
             initSettingsMenus();
+            window.addEventListener('popstate', handleHistoryNavigation);
             
             // Set the initial state based on the URL when the page loads
             handleDebugState(); 
@@ -1506,6 +2062,7 @@
             answerInputElement.addEventListener('input', handleInput);
             startButton.addEventListener('click', startGame);
             newSetButton.addEventListener('click', startGame);
+            restoreResultsButton.addEventListener('click', restoreResults);
             skipButtonElement.addEventListener('click', handleSkip);
             document.addEventListener('keydown', handleKeyDown);
 
